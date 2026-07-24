@@ -1,6 +1,6 @@
 use crate::{
     commit::model::{CommitBody, CommitFooter, CommitHeader, CommitMessage, CommitScope},
-    error::{ConvlintError, ConvlintResult},
+    error::model_error::{ModelError, ModelResult},
 };
 
 /// The parser parses raw strings into [`CommitMessage`]s.
@@ -24,7 +24,7 @@ impl CommitParser {
     ///
     /// This function will return an error if any commit could
     /// not be parsed successfully.
-    pub fn parse_commits(&self) -> ConvlintResult<Vec<CommitMessage>> {
+    pub fn parse_commits(&self) -> ModelResult<Vec<CommitMessage>> {
         let mut parsed_commits = Vec::new();
         for raw_commit in &self.raw_commits {
             parsed_commits.push(Self::parse_commit(raw_commit)?);
@@ -40,9 +40,9 @@ impl CommitParser {
     /// This function will return an error if the raw commit is empty, the commit
     /// body, if any, could not be parsed or if any footer can be parsed successfully.
     // TODO: add check if is footer or body, since otherwise errors
-    pub(crate) fn parse_commit(raw_commit: &'static str) -> ConvlintResult<CommitMessage> {
+    pub(crate) fn parse_commit(raw_commit: &'static str) -> ModelResult<CommitMessage> {
         if raw_commit.is_empty() {
-            return Err(ConvlintError::EmptyContent(String::from("commit")));
+            return Err(ModelError::EmptyContent(String::from("commit")));
         }
         let mut parts_iter = raw_commit
             .split("\n\n")
@@ -51,7 +51,7 @@ impl CommitParser {
             .into_iter();
 
         let Some(raw_header) = parts_iter.next() else {
-            return Err(ConvlintError::EmptyContent(String::from("commit header")));
+            return Err(ModelError::EmptyContent(String::from("commit header")));
         };
         let header = Self::parse_commit_header(raw_header)?;
 
@@ -83,14 +83,14 @@ impl CommitParser {
     /// This function will return an error if the raw header is malformed (e.g. does not contain a type,
     /// does not contain a description, is missing the scope if `()` is found or if the `:` is missing).
     // FIXME: refactor
-    pub(crate) fn parse_commit_header(raw_header: &'static str) -> ConvlintResult<CommitHeader> {
+    pub(crate) fn parse_commit_header(raw_header: &'static str) -> ModelResult<CommitHeader> {
         if raw_header.is_empty() {
-            return Err(ConvlintError::EmptyContent(String::from("commit header")));
+            return Err(ModelError::EmptyContent(String::from("commit header")));
         }
         let mut header = CommitHeader::default();
 
         let Some(split_raw_header) = raw_header.split_once(':') else {
-            return Err(ConvlintError::MissingCharacter(
+            return Err(ModelError::MissingCharacter(
                 ':',
                 String::from(
                     "conventional commits require a colon after the commit type (optionally with a scope inbetween)",
@@ -99,12 +99,10 @@ impl CommitParser {
         };
 
         if split_raw_header.0.trim().is_empty() {
-            return Err(ConvlintError::EmptyContent(String::from(
-                "conventional type",
-            )));
+            return Err(ModelError::EmptyContent(String::from("conventional type")));
         }
         if split_raw_header.1.trim().is_empty() {
-            return Err(ConvlintError::MissingDescription);
+            return Err(ModelError::MissingDescription);
         }
         header.description = split_raw_header.1.trim().to_string();
 
@@ -112,20 +110,20 @@ impl CommitParser {
             header.commit_type = split_type.0.trim().to_string();
 
             let Some(split_scope) = split_type.1.split_once(')') else {
-                return Err(ConvlintError::MissingCharacter(
+                return Err(ModelError::MissingCharacter(
                     ')',
                     String::from("a closing parenthesis is expected after the scope name"),
                 ));
             };
 
             if split_scope.0.is_empty() {
-                return Err(ConvlintError::MissingScopeNameError);
+                return Err(ModelError::MissingScopeNameError);
             }
             header.scope = Some(CommitScope {
                 scope_name: split_scope.0.trim().to_string(),
             });
             if split_scope.1 != "!" && !split_scope.1.is_empty() {
-                return Err(ConvlintError::UnexpectedContent(split_scope.1.to_string()));
+                return Err(ModelError::UnexpectedContent(split_scope.1.to_string()));
             } else if split_scope.1 == "!" {
                 header.breaking = true;
             }
@@ -148,14 +146,14 @@ impl CommitParser {
     ///
     /// This function will return an error if the raw body is empty or the
     /// lines in the body are not consecutive.
-    pub(crate) fn parse_commit_body(raw_body: &'static str) -> ConvlintResult<CommitBody> {
+    pub(crate) fn parse_commit_body(raw_body: &'static str) -> ModelResult<CommitBody> {
         let body = raw_body.trim();
         if body.is_empty() {
-            return Err(ConvlintError::EmptyContent(String::from("commit body")));
+            return Err(ModelError::EmptyContent(String::from("commit body")));
         }
 
         if body.split_once("\n\n").is_some() {
-            return Err(ConvlintError::UnexpectedContent(String::from(
+            return Err(ModelError::UnexpectedContent(String::from(
                 "no newlines allowed in commit bodies",
             )));
         }
@@ -171,9 +169,9 @@ impl CommitParser {
     /// # Errors
     ///
     /// This function will return an error if the footer is empty or there is no `:`/`#`.
-    pub(crate) fn parse_commit_footer(raw_footer: &'static str) -> ConvlintResult<CommitFooter> {
+    pub(crate) fn parse_commit_footer(raw_footer: &'static str) -> ModelResult<CommitFooter> {
         if raw_footer.is_empty() {
-            return Err(ConvlintError::EmptyContent("commit footer".into()));
+            return Err(ModelError::EmptyContent("commit footer".into()));
         }
         if let Some(split_colon) = raw_footer.split_once(':') {
             return Ok(CommitFooter {
@@ -183,7 +181,7 @@ impl CommitParser {
             });
         }
         let Some(split_hashtag) = raw_footer.split_once('#') else {
-            return Err(ConvlintError::MissingCharacter(
+            return Err(ModelError::MissingCharacter(
                 ':',
                 "a footer must contain a `:` or `#` somewhere in it".into(),
             ));
@@ -206,7 +204,7 @@ pub mod tests {
             model::{CommitBody, CommitFooter, CommitHeader, CommitMessage, CommitScope},
             parser::CommitParser,
         },
-        error::ConvlintError,
+        error::model_error::ModelError,
     };
 
     #[rstest]
@@ -254,32 +252,32 @@ pub mod tests {
     #[rstest]
     #[case(
         "fix some description",
-        ConvlintError::MissingCharacter(
+        ModelError::MissingCharacter(
             ':',
             String::from(
                 "conventional commits require a colon after the commit type (optionally with a scope inbetween)"
             )
         )
     )]
-    #[case("fix(): some description", ConvlintError::MissingScopeNameError)]
+    #[case("fix(): some description", ModelError::MissingScopeNameError)]
     #[case(
         "fix(scope: some description",
-        ConvlintError::MissingCharacter(
+        ModelError::MissingCharacter(
             ')',
             String::from("a closing parenthesis is expected after the scope name")
         )
     )]
-    #[case("fix:", ConvlintError::MissingDescription)]
-    #[case("", ConvlintError::EmptyContent(String::from("commit header")))]
+    #[case("fix:", ModelError::MissingDescription)]
+    #[case("", ModelError::EmptyContent(String::from("commit header")))]
     #[case(
         ": some description",
-        ConvlintError::EmptyContent(String::from("conventional type"))
+        ModelError::EmptyContent(String::from("conventional type"))
     )]
     #[case(
         "fix(scope)some!: some more",
-        ConvlintError::UnexpectedContent(String::from("some!"))
+        ModelError::UnexpectedContent(String::from("some!"))
     )]
-    fn parse_commit_header_fail(#[case] raw_header: &'static str, #[case] expected: ConvlintError) {
+    fn parse_commit_header_fail(#[case] raw_header: &'static str, #[case] expected: ModelError) {
         let header_res = CommitParser::parse_commit_header(raw_header);
         assert!(header_res.is_err());
         assert_eq!(header_res.unwrap_err(), expected);
@@ -305,14 +303,14 @@ pub mod tests {
     }
 
     #[rstest]
-    #[case("", ConvlintError::EmptyContent(String::from("commit body")))]
+    #[case("", ModelError::EmptyContent(String::from("commit body")))]
     #[case(
         r"some start
 
         after newline",
-        ConvlintError::UnexpectedContent(String::from("no newlines allowed in commit bodies"))
+        ModelError::UnexpectedContent(String::from("no newlines allowed in commit bodies"))
     )]
-    fn parse_commit_body_fail(#[case] raw_body: &'static str, #[case] expected: ConvlintError) {
+    fn parse_commit_body_fail(#[case] raw_body: &'static str, #[case] expected: ModelError) {
         let body_res = CommitParser::parse_commit_body(raw_body);
         assert!(body_res.is_err());
         assert_eq!(body_res.unwrap_err(), expected);
@@ -363,13 +361,13 @@ pub mod tests {
     #[rstest]
     #[case(
         "token some info",
-        ConvlintError::MissingCharacter(
+        ModelError::MissingCharacter(
             ':',
             String::from("a footer must contain a `:` or `#` somewhere in it")
         )
     )]
-    #[case("", ConvlintError::EmptyContent(String::from("commit footer")))]
-    fn parse_commit_footer_fail(#[case] raw_footer: &'static str, #[case] expected: ConvlintError) {
+    #[case("", ModelError::EmptyContent(String::from("commit footer")))]
+    fn parse_commit_footer_fail(#[case] raw_footer: &'static str, #[case] expected: ModelError) {
         let footer_res = CommitParser::parse_commit_footer(raw_footer);
         assert!(footer_res.is_err());
         assert_eq!(footer_res.unwrap_err(), expected);
@@ -458,8 +456,8 @@ pub mod tests {
     }
 
     #[rstest]
-    #[case("", ConvlintError::EmptyContent("commit".into()))]
-    fn parse_commit_fail(#[case] raw_commit: &'static str, #[case] expected: ConvlintError) {
+    #[case("", ModelError::EmptyContent("commit".into()))]
+    fn parse_commit_fail(#[case] raw_commit: &'static str, #[case] expected: ModelError) {
         let commit_res = CommitParser::parse_commit(raw_commit);
         assert!(commit_res.is_err());
         assert_eq!(commit_res.unwrap_err(), expected);

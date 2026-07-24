@@ -2,22 +2,28 @@ use std::{fs, path::Path};
 
 use serde::{Deserialize, Serialize};
 
-use crate::error::ConvlintResult;
+use crate::{error::config_error::ConfigResult, rules::RulesConfig};
 
 /// The name of the config file.
 pub const CONF_FILE_NAME: &str = "Convlint.toml";
 
+// TODO: use Option to allow writing to the
+// config file. currently, if convlint would write
+// to a conf file that does not set all fields, the whole config
+// gets written instead of the user given config
 /// The configuration of the convlint execution.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub(crate) struct ConvlintTOML {}
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "kebab-case", default)]
+pub struct ConvlintTOML {
+    /// All rules defined are put in this config.
+    ///
+    /// This is used to generate a pretty pattern in TOML
+    /// so every rule in the config file looks like
+    /// `[rules.<rule-name>]`.
+    pub rules: RulesConfig,
+}
 
 impl ConvlintTOML {
-    /// Creates a new [`ConvlintTOML`].
-    #[must_use]
-    pub(crate) const fn new() -> Self {
-        Self {}
-    }
-
     /// Read the configuration file and deserialize it into
     /// a [`ConvlintTOML`] configuration.
     ///
@@ -25,7 +31,7 @@ impl ConvlintTOML {
     ///
     /// This function will return an error if the file could not
     /// be read or the read content cannot be deserialized.
-    pub(crate) fn from_file(path: &Path) -> ConvlintResult<Self> {
+    pub(crate) fn from_file(path: &Path) -> ConfigResult<Self> {
         let file_content = fs::read_to_string(path)?;
         Ok(toml::from_str(&file_content)?)
     }
@@ -41,7 +47,7 @@ impl ConvlintTOML {
     /// This function will return an error if the the configuration
     /// could not be serialized to toml or cannot be written
     /// to the configuration file.
-    pub(crate) fn write_to_file(&self, path: &Path) -> ConvlintResult<()> {
+    pub(crate) fn write_to_file(&self, path: &Path) -> ConfigResult<()> {
         let toml_str = toml::to_string(self)?;
         fs::write(path, &toml_str)?;
         Ok(())
@@ -57,7 +63,7 @@ pub mod tests {
 
     use crate::{
         config::{CONF_FILE_NAME, ConvlintTOML},
-        error::ConvlintError,
+        error::config_error::ConfigError,
     };
 
     #[fixture]
@@ -67,7 +73,20 @@ pub mod tests {
 
     #[fixture]
     fn valid_config_str() -> String {
-        String::new()
+        let conf = r#"
+[rules.type-exists]
+level = "error"
+allowed = ["feat", "fix"]
+
+[rules.description-length]
+level = "error"
+minimum = 5
+maximum = 10
+
+[rules.body-required]
+level = "error"
+            "#;
+        String::from(conf)
     }
 
     #[fixture]
@@ -77,7 +96,7 @@ pub mod tests {
 
     #[fixture]
     fn valid_config() -> ConvlintTOML {
-        ConvlintTOML::new()
+        ConvlintTOML::default()
     }
 
     #[rstest]
@@ -99,7 +118,7 @@ pub mod tests {
         assert!(conf_res.is_err());
         assert!(matches!(
             conf_res.unwrap_err(),
-            ConvlintError::IoError(e) if e.kind() == io::ErrorKind::NotFound
+            ConfigError::IoError(e) if e.kind() == io::ErrorKind::NotFound
         ));
     }
 
@@ -112,7 +131,7 @@ pub mod tests {
         assert!(conf_res.is_err());
         assert!(matches!(
             conf_res.unwrap_err(),
-            ConvlintError::TomlDeserializationError(_)
+            ConfigError::TomlDeserializationError(_)
         ));
     }
 
