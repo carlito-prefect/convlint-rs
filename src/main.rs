@@ -1,3 +1,6 @@
+use clap::Parser;
+use convlint::cli::ConvlintCli;
+
 fn main() {
-    println!("Hello, world!");
+    let _cli = ConvlintCli::parse();
 }
