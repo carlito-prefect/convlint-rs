@@ -39,6 +39,7 @@ impl CommitParser {
     ///
     /// This function will return an error if the raw commit is empty, the commit
     /// body, if any, could not be parsed or if any footer can be parsed successfully.
+    // TODO: add check if is footer or body, since otherwise errors
     pub(crate) fn parse_commit(raw_commit: &'static str) -> ConvlintResult<CommitMessage> {
         if raw_commit.is_empty() {
             return Err(ConvlintError::EmptyContent(String::from("commit")));
