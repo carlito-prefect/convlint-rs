@@ -8,7 +8,7 @@ use thiserror::Error;
 
 /// All errors that can occur during the execution of Convlint.
 #[derive(Debug, Error)]
-pub enum ConvlintError {
+pub enum ModelError {
     /// Convlint was not able to serialize
     /// program structure to TOML.
     #[error("Failed to serialize to TOML: {_0}")]
@@ -43,11 +43,12 @@ pub enum ConvlintError {
     #[error("Found a string that was not expected: {_0}")]
     UnexpectedContent(String),
 
+    /// Convert an IO Error into a [`ModelError`].
     #[error("Io Error: {_0}")]
     IoError(#[from] io::Error),
 }
 
-impl PartialEq for ConvlintError {
+impl PartialEq for ModelError {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::MissingDescription, Self::MissingDescription)
@@ -65,8 +66,8 @@ impl PartialEq for ConvlintError {
     }
 }
 
-impl Eq for ConvlintError {}
+impl Eq for ModelError {}
 
 /// A convenience type for clearer error handling
 /// and less verbose return types.
-pub type ConvlintResult<T> = Result<T, ConvlintError>;
+pub type ModelResult<T> = Result<T, ModelError>;
