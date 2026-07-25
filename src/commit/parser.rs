@@ -40,7 +40,7 @@ impl CommitParser {
     /// This function will return an error if the raw commit is empty, the commit
     /// body, if any, could not be parsed or if any footer can be parsed successfully.
     // TODO: add check if is footer or body, since otherwise errors
-    pub(crate) fn parse_commit(raw_commit: &str) -> ModelResult<CommitMessage> {
+    pub fn parse_commit(raw_commit: &str) -> ModelResult<CommitMessage> {
         if raw_commit.is_empty() {
             return Err(ModelError::EmptyContent(String::from("commit")));
         }
@@ -85,7 +85,7 @@ impl CommitParser {
     /// This function will return an error if the raw header is malformed (e.g. does not contain a type,
     /// does not contain a description, is missing the scope if `()` is found or if the `:` is missing).
     // FIXME: refactor
-    pub(crate) fn parse_commit_header(raw_header: &str) -> ModelResult<CommitHeader> {
+    pub fn parse_commit_header(raw_header: &str) -> ModelResult<CommitHeader> {
         if raw_header.is_empty() {
             return Err(ModelError::EmptyContent(String::from("commit header")));
         }
@@ -148,7 +148,7 @@ impl CommitParser {
     ///
     /// This function will return an error if the raw body is empty or the
     /// lines in the body are not consecutive.
-    pub(crate) fn parse_commit_body(raw_body: &str) -> ModelResult<CommitBody> {
+    pub fn parse_commit_body(raw_body: &str) -> ModelResult<CommitBody> {
         let body = raw_body.trim();
         if body.is_empty() {
             return Err(ModelError::EmptyContent(String::from("commit body")));
@@ -171,7 +171,7 @@ impl CommitParser {
     /// # Errors
     ///
     /// This function will return an error if the footer is empty or there is no `:`/`#`.
-    pub(crate) fn parse_commit_footer(raw_footer: &str) -> ModelResult<CommitFooter> {
+    pub fn parse_commit_footer(raw_footer: &str) -> ModelResult<CommitFooter> {
         if raw_footer.is_empty() {
             return Err(ModelError::EmptyContent("commit footer".into()));
         }

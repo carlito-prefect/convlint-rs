@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -37,12 +38,13 @@ impl Default for DescriptionLengthConfig {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DescriptionLength;
 
+#[async_trait]
 impl Rule for DescriptionLength {
     fn id(&self) -> &'static str {
         "description-length"
     }
 
-    fn check(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Vec<Diagnostic> {
+    async fn check(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Vec<Diagnostic> {
         if commit.header.description.len() > config.rules.description_length.maximum
             || commit.header.description.len() < config.rules.description_length.minimum
         {
@@ -88,6 +90,7 @@ mod tests {
     }
 
     #[rstest]
+    #[tokio::test]
     #[case(
         CommitMessage {
             header: CommitHeader {
@@ -169,12 +172,12 @@ mod tests {
         },
         vec![]
     )]
-    fn default_config_check_description_length(
+    async fn default_config_check_description_length(
         #[case] commit: CommitMessage,
         default_config: ConvlintTOML,
         #[case] expected: Vec<Diagnostic>,
     ) {
-        let diagnostics = DescriptionLength.check(&commit, &default_config);
+        let diagnostics = DescriptionLength.check(&commit, &default_config).await;
         assert_eq!(diagnostics, expected);
     }
 }

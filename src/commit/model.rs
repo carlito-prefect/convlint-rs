@@ -65,19 +65,19 @@ impl Display for CommitMessage {
 
 impl CommitMessage {
     /// Returns `true` if the commit message has a body.
-    pub(crate) const fn has_body(&self) -> bool {
+    pub const fn has_body(&self) -> bool {
         self.body.is_some()
     }
 
     /// Returns `true` if the commit message has any footers.
-    pub(crate) const fn has_footers(&self) -> bool {
+    pub const fn has_footers(&self) -> bool {
         !self.footers.is_empty()
     }
 
     /// Returns `true` if either the header or any of
     /// the footers indicate that this is a commit with breaking
     /// changes.
-    pub(crate) fn is_breaking(&self) -> bool {
+    pub fn is_breaking(&self) -> bool {
         self.header.breaking || self.footers.iter().any(|f| f.breaking)
     }
 }
@@ -106,26 +106,26 @@ pub struct CommitHeader {
     /// The type of the commit.
     ///
     /// A type must be any type of conventional commiting such as `fix`.
-    pub(crate) commit_type: String,
+    pub commit_type: String,
 
     /// The scope of the commit.
     ///
     /// With `feat(parser): ...` the scope is `parser` which indicates
     /// that there is a new parser feature in this commit.
-    pub(crate) scope: Option<CommitScope>,
+    pub scope: Option<CommitScope>,
 
     /// The description of the commit.
     ///
     /// A description must be at least one character
     /// long, but the minimum can be set with `description-min-length`
     /// in the configuration file.
-    pub(crate) description: String,
+    pub description: String,
 
     /// Indicates if the header specifies breaking changes.
     ///
     /// The parser checks if there is a `!` after the scope which
     /// inidcates breaking changes.
-    pub(crate) breaking: bool,
+    pub breaking: bool,
 }
 
 /// Represents the body of a commit message.
@@ -138,7 +138,7 @@ pub struct CommitHeader {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CommitBody {
     /// The commit body's content.
-    pub(crate) content: String,
+    pub content: String,
 }
 
 /// Represents a commit message's footer.
@@ -155,21 +155,21 @@ pub struct CommitBody {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CommitFooter {
     /// The part of the footer before the `:` or `#`.
-    pub(crate) token: String,
+    pub token: String,
 
     /// The part of the footer after the `:` or `#`.
-    pub(crate) value: String,
+    pub value: String,
 
     /// Indicates if the footer specifies breaking changes.
     ///
     /// The parser checks for sub-strings in the token to see
     /// if the footer specifies breaking changes.
-    pub(crate) breaking: bool,
+    pub breaking: bool,
 }
 
 impl CommitFooter {
     /// Creates a new [`CommitFooter`].
-    pub(crate) fn new(token: &str, value: &str, breaking: bool) -> Self {
+    pub fn new(token: &str, value: &str, breaking: bool) -> Self {
         Self {
             token: token.into(),
             value: value.into(),
@@ -184,7 +184,7 @@ impl CommitFooter {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CommitScope {
     /// The name of the scopes.
-    pub(crate) scope_name: String,
+    pub scope_name: String,
 }
 
 #[cfg(test)]
@@ -208,15 +208,17 @@ mod tests {
     }
 
     #[rstest]
+    #[tokio::test]
     #[case(Some(CommitBody { content: String::new() }))]
     #[case(None)]
-    fn test_has_body(mut commit_message: CommitMessage, #[case] body: Option<CommitBody>) {
+    async fn test_has_body(mut commit_message: CommitMessage, #[case] body: Option<CommitBody>) {
         let has_body_res = body.is_some();
         commit_message.body = body;
         assert_eq!(commit_message.has_body(), has_body_res);
     }
 
     #[rstest]
+    #[tokio::test]
     #[case(vec![])]
     #[case(
         vec![
@@ -233,7 +235,10 @@ mod tests {
             CommitFooter::new("other", "content", false),
         ]
     )]
-    fn test_has_footers(mut commit_message: CommitMessage, #[case] footers: Vec<CommitFooter>) {
+    async fn test_has_footers(
+        mut commit_message: CommitMessage,
+        #[case] footers: Vec<CommitFooter>,
+    ) {
         commit_message.footers = footers;
         assert_eq!(
             commit_message.has_footers(),

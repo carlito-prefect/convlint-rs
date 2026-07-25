@@ -94,7 +94,8 @@ impl GitRepository {
 
 #[cfg(test)]
 mod tests {
-    use std::{fs, process::Command};
+    use std::process::Command;
+    use tokio::fs;
 
     use rstest::{fixture, rstest};
     use tempfile::TempDir;
@@ -102,11 +103,13 @@ mod tests {
     use crate::{error::git_error::GitError, git::GitRepository};
 
     #[fixture]
-    fn initialized_temp_dir() -> TempDir {
+    async fn initialized_temp_dir() -> TempDir {
         let temp_dir = TempDir::new().unwrap();
         let _ = gix::init(temp_dir.path()).unwrap();
         let msg = "some message content\n\nsome body\n";
-        fs::write(temp_dir.path().join("file.txt"), msg).unwrap();
+        fs::write(temp_dir.path().join("file.txt"), msg)
+            .await
+            .unwrap();
 
         Command::new("git")
             .current_dir(temp_dir.path())
@@ -128,7 +131,9 @@ mod tests {
             .status()
             .unwrap();
 
-        fs::write(temp_dir.path().join("file1.txt"), msg).unwrap();
+        fs::write(temp_dir.path().join("file1.txt"), msg)
+            .await
+            .unwrap();
 
         Command::new("git")
             .current_dir(temp_dir.path())
@@ -158,14 +163,16 @@ mod tests {
     }
 
     #[rstest]
+    #[tokio::test]
     #[case("HEAD~", "HEAD", vec!["some message content\n\nsome body\n".into()])]
     #[case("HEAD", "HEAD", vec![])]
-    fn fetch_git_range_commits_successfull(
+    async fn fetch_git_range_commits_successfull(
         #[case] from: &str,
         #[case] to: &str,
         #[case] expected: Vec<String>,
-        initialized_temp_dir: TempDir,
+        initialized_temp_dir: impl Future<Output = TempDir>,
     ) {
+        let initialized_temp_dir = initialized_temp_dir.await;
         let git_repo = GitRepository::new(initialized_temp_dir.path().to_path_buf());
         assert!(git_repo.is_ok());
         let repo = git_repo.unwrap();
@@ -175,12 +182,14 @@ mod tests {
     }
 
     #[rstest]
+    #[tokio::test]
     #[case("HEAD", "HEAD~")]
-    fn fetch_git_range_commits_head_before_base(
+    async fn fetch_git_range_commits_head_before_base(
         #[case] from: &str,
         #[case] to: &str,
-        initialized_temp_dir: TempDir,
+        initialized_temp_dir: impl Future<Output = TempDir>,
     ) {
+        let initialized_temp_dir = initialized_temp_dir.await;
         let git_repo = GitRepository::new(initialized_temp_dir.path().to_path_buf());
         assert!(git_repo.is_ok());
         let repo = git_repo.unwrap();
@@ -193,13 +202,16 @@ mod tests {
     }
 
     #[rstest]
-    fn git_repo_new_success(initialized_temp_dir: TempDir) {
+    #[tokio::test]
+    async fn git_repo_new_success(initialized_temp_dir: impl Future<Output = TempDir>) {
+        let initialized_temp_dir = initialized_temp_dir.await;
         let git_repo = GitRepository::new(initialized_temp_dir.path().to_path_buf());
         assert!(git_repo.is_ok());
     }
 
     #[rstest]
-    fn git_repo_new_fail(uninitialized_temp_dir: TempDir) {
+    #[tokio::test]
+    async fn git_repo_new_fail(uninitialized_temp_dir: TempDir) {
         let git_repo = GitRepository::new(uninitialized_temp_dir.path().to_path_buf());
         assert!(git_repo.is_err());
     }

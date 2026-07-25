@@ -1,3 +1,5 @@
+use futures::future::join_all;
+
 use crate::{
     commit::model::CommitMessage,
     config::ConvlintTOML,
@@ -27,14 +29,10 @@ impl Linter {
     // TODO: add the commit message to the diagnostic to show the user where the error
     // happened
     #[must_use]
-    pub fn lint(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Vec<Diagnostic> {
-        let mut diagnostics = Vec::new();
+    pub async fn lint(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Vec<Diagnostic> {
+        let results = join_all(self.rules.iter().map(|rule| rule.check(commit, config))).await;
 
-        for rule in &self.rules {
-            diagnostics.append(&mut rule.check(commit, config));
-        }
-
-        diagnostics
+        results.into_iter().flatten().collect()
     }
 }
 
@@ -60,6 +58,7 @@ mod tests {
     }
 
     #[rstest]
+    #[tokio::test]
     #[case(
         CommitMessage {
             header: CommitHeader {
@@ -133,13 +132,13 @@ mod tests {
             },
         ]
     )]
-    fn default_config_lint(
+    async fn default_config_lint(
         #[case] commit: CommitMessage,
         default_config: ConvlintTOML,
         #[case] expected: Vec<Diagnostic>,
     ) {
         let linter = Linter::new();
-        let diagnostics = linter.lint(&commit, &default_config);
+        let diagnostics = linter.lint(&commit, &default_config).await;
         assert_eq!(diagnostics, expected);
     }
 }

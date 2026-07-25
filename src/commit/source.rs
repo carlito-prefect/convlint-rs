@@ -1,8 +1,8 @@
 use std::{
-    fs,
     io::{self, Read},
     path::PathBuf,
 };
+use tokio::fs;
 
 use crate::{
     error::source_error::{SourceError, SourceResult},
@@ -26,15 +26,23 @@ pub enum CommitSource {
 }
 
 impl CommitSource {
+    /// Fetch commits from a given source.
+    ///
+    /// If the commit is read from a file, the file content is interpreted as the commit
+    /// message. If the commit is read from a command line argument or stdin, the string is
+    /// just returned as is. If the commits are read from a git range, a gix repo instance
+    /// is created and commits are fetched from history.
     #[allow(clippy::result_large_err)]
-    pub fn fetch_commits(&self, git_root: PathBuf) -> SourceResult<Vec<String>> {
+    pub async fn fetch_commits(&self, git_root: PathBuf) -> SourceResult<Vec<String>> {
         match self {
             Self::File(path) => {
                 let file_content =
-                    fs::read_to_string(path).map_err(|err| SourceError::FileReadError {
-                        path: path.to_owned(),
-                        source: err,
-                    })?;
+                    fs::read_to_string(path)
+                        .await
+                        .map_err(|err| SourceError::FileReadError {
+                            path: path.to_owned(),
+                            source: err,
+                        })?;
                 Ok(vec![file_content])
             }
             Self::Message(msg) => Ok(vec![msg.to_owned()]),

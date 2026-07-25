@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -26,7 +27,8 @@ pub fn rules() -> Vec<Box<dyn Rule>> {
 
 /// Defines functionality all rules must provide
 /// to check for violations.
-pub trait Rule {
+#[async_trait]
+pub trait Rule: Send + Sync {
     /// Returns the id/name of the rule.
     fn id(&self) -> &'static str;
 
@@ -34,7 +36,7 @@ pub trait Rule {
     /// on the config.
     // TODO: check if a single diagnostic is also applicable
     // if so remove the vec
-    fn check(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Vec<Diagnostic>;
+    async fn check(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Vec<Diagnostic>;
 }
 
 /// Holds all rule types.

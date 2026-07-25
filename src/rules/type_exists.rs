@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -35,12 +36,13 @@ impl Default for TypeExistsConfig {
 /// A rule that defines if a type must exist.
 pub struct TypeExists;
 
+#[async_trait]
 impl Rule for TypeExists {
     fn id(&self) -> &'static str {
         "type-exists"
     }
 
-    fn check(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Vec<Diagnostic> {
+    async fn check(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Vec<Diagnostic> {
         for allowed_type in &config.rules.type_exists.allowed {
             if &commit.header.commit_type == allowed_type {
                 return vec![];
@@ -72,6 +74,7 @@ mod tests {
     }
 
     #[rstest]
+    #[tokio::test]
     #[case(
         CommitMessage {
             header: CommitHeader {
@@ -118,12 +121,12 @@ mod tests {
             }
         ]
     )]
-    fn default_config_check_type_exists(
+    async fn default_config_check_type_exists(
         #[case] commit: CommitMessage,
         default_config: ConvlintTOML,
         #[case] expected: Vec<Diagnostic>,
     ) {
-        let diagnostics = TypeExists.check(&commit, &default_config);
+        let diagnostics = TypeExists.check(&commit, &default_config).await;
         assert_eq!(diagnostics, expected);
     }
 }
