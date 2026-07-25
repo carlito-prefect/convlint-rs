@@ -50,6 +50,7 @@ impl Rule for TypeExists {
             rule: self.id(),
             severity: config.rules.type_exists.level,
             message: format!("no valid conventional type: {}", commit.header.commit_type),
+            commit: format!("{commit}"),
         }]
     }
 }
@@ -112,7 +113,8 @@ mod tests {
             Diagnostic {
                 rule: "type-exists",
                 severity: Severity::Error,
-                message: String::from("no valid conventional type: false type")
+                message: String::from("no valid conventional type: false type"),
+                commit: "false type: added new features".into(),
             }
         ]
     )]

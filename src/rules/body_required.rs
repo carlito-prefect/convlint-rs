@@ -39,6 +39,7 @@ impl Rule for BodyRequired {
                 rule: self.id(),
                 severity: config.rules.body_required.level,
                 message: String::from("expected the commit message to have a body"),
+                commit: format!("{commit}"),
             }]
         } else {
             vec![]
@@ -92,6 +93,7 @@ mod tests {
                 rule: "body-required",
                 severity: Severity::Warning,
                 message: String::from("expected the commit message to have a body"),
+                commit: "feat: ".to_string() + &"foo ".repeat(25)
             }
         ]
     )]

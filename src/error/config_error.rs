@@ -1,4 +1,4 @@
-use std::io;
+use std::{io, path::PathBuf};
 
 use thiserror::Error;
 
@@ -19,28 +19,30 @@ pub enum ConfigError {
 
     /// Occurs if a rule has a minimum and a maximum value
     /// e.g. description length and the maximum value is 0.
-    #[error("Maximum {_0} length must be at least 1")]
+    #[error("Maximum {0} length must be at least 1")]
     MaxZeroLength(String /* rule name */),
 
     /// Convert an IO Error to a [`ConfigError`]
-    #[error("Io Error: {_0}")]
-    IoError(#[from] io::Error),
+    #[error("IO Error: {source} with path `{path}`")]
+    IoError { path: PathBuf, source: io::Error },
 
     /// Convlint was not able to serialize
     /// program structure to TOML.
-    #[error("Failed to serialize to TOML: {_0}")]
+    #[error("Failed to serialize to TOML: {0}")]
     TomlSerializationError(#[from] toml::ser::Error),
 
     /// Convlint was not able to deserialize to
     /// program structure from TOML.
-    #[error("Failed to deserialize from TOML: {_0}")]
+    #[error("Failed to deserialize from TOML: {0}")]
     TomlDeserializationError(#[from] toml::de::Error),
 }
 
 impl PartialEq for ConfigError {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Self::IoError(e1), Self::IoError(e2)) => e1.kind() == e2.kind(),
+            (Self::IoError { source: s1, .. }, Self::IoError { source: s2, .. }) => {
+                s1.kind() == s2.kind()
+            }
             (
                 Self::InvalidLengthRange {
                     rule: r1,

@@ -16,6 +16,7 @@ pub struct Linter {
 
 impl Linter {
     /// Creates a new [`Linter`].
+    #[must_use]
     pub fn new() -> Self {
         Self { rules: rules() }
     }
@@ -25,6 +26,7 @@ impl Linter {
     /// All errors from all rules are collected into one [`Vec`] and returned.
     // TODO: add the commit message to the diagnostic to show the user where the error
     // happened
+    #[must_use]
     pub fn lint(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Vec<Diagnostic> {
         let mut diagnostics = Vec::new();
 
@@ -33,6 +35,12 @@ impl Linter {
         }
 
         diagnostics
+    }
+}
+
+impl Default for Linter {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -81,11 +89,14 @@ mod tests {
                 rule: "body-required",
                 severity: Severity::Warning,
                 message: String::from("expected the commit message to have a body"),
+                commit: "false type: ".to_string() + &"foo ".repeat(20),
+
             },
             Diagnostic {
                 rule: "type-exists",
                 severity: Severity::Error,
-                message: String::from("no valid conventional type: false type")
+                message: String::from("no valid conventional type: false type"),
+                commit: "false type: ".to_string() + &"foo ".repeat(20),
             },
         ]
     )]
@@ -105,16 +116,20 @@ mod tests {
                 rule: "body-required",
                 severity: Severity::Warning,
                 message: String::from("expected the commit message to have a body"),
+                commit: "false type: ".to_string() + &"foo ".repeat(30),
             },
             Diagnostic {
                 rule: "description-length",
                 severity: Severity::Warning,
                 message: String::from("description is too long: expected min(20) and max(100) characters, found chars(120)"),
+                commit: "false type: ".to_string() + &"foo ".repeat(30),
             },
             Diagnostic {
                 rule: "type-exists",
                 severity: Severity::Error,
-                message: String::from("no valid conventional type: false type")
+                message: String::from("no valid conventional type: false type"),
+                commit: "false type: ".to_string() + &"foo ".repeat(30),
+
             },
         ]
     )]

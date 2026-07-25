@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use derive_more::Display;
 
 /// Represents a commit message's content.
@@ -18,37 +20,47 @@ use derive_more::Display;
 ///
 /// footersyntax2 #with some other content
 /// ```
-#[derive(Debug, Clone, Display, PartialEq, Eq)]
-#[display(
-    "Commit:\n{header}\n{}\n\n{}",
-    body
-        .clone()
-        .map(|b| b.content)
-        .unwrap_or_default(),
-    footers
-        .iter()
-        .map(|f| format!("{}: {}", f.token, f.value))
-        .collect::<Vec<_>>()
-        .join("\n\n")
-)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CommitMessage {
     /// The header of the commit message.
     ///
     /// This field is mandatory, because a commit cannot be empty.
-    pub(crate) header: CommitHeader,
+    pub header: CommitHeader,
 
     /// The body of the commit message.
     ///
     /// This field is optional, but can be enforced by setting the
     /// `body_empty` setting to level: `error` in the configuration
     /// file.
-    pub(crate) body: Option<CommitBody>,
+    pub body: Option<CommitBody>,
 
     /// The footers of the commit message.
     ///
     /// This field can be totally empty and hold
     ///
-    pub(crate) footers: Vec<CommitFooter>,
+    pub footers: Vec<CommitFooter>,
+}
+
+impl Display for CommitMessage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut out = String::new();
+        out.push_str(&self.header.to_string());
+        if self.has_body() {
+            out.push_str("\n\n");
+            out.push_str(&self.body.clone().map(|b| b.content).unwrap_or_default());
+        }
+        if self.has_footers() {
+            out.push_str(
+                &self
+                    .footers
+                    .iter()
+                    .map(|f| format!("{}: {}", f.token, f.value))
+                    .collect::<Vec<_>>()
+                    .join("\n\n"),
+            );
+        }
+        write!(f, "{out}")
+    }
 }
 
 impl CommitMessage {

@@ -62,6 +62,7 @@ impl Rule for DescriptionLength {
                     max = config.rules.description_length.maximum,
                     ch = commit.header.description.len()
                 ),
+                commit: format!("{commit}"),
             }]
         } else {
             vec![]
@@ -116,6 +117,7 @@ mod tests {
                 rule: "description-length",
                 severity: Severity::Warning,
                 message: String::from("description is too short: expected min(20) and max(100) characters, found chars(3)"),
+                commit: "feat: foo".into(),
             }
         ]
     )]
@@ -135,6 +137,7 @@ mod tests {
                 rule: "description-length",
                 severity: Severity::Warning,
                 message: String::from("description is too long: expected min(20) and max(100) characters, found chars(120)"),
+                commit: "feat: ".to_string() + &"foo ".repeat(30),
             }
         ]
     )]

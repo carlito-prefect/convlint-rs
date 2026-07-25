@@ -1,4 +1,4 @@
-use std::io;
+use std::{io, path::PathBuf};
 
 use thiserror::Error;
 
@@ -11,17 +11,17 @@ use thiserror::Error;
 pub enum ModelError {
     /// Convlint was not able to serialize
     /// program structure to TOML.
-    #[error("Failed to serialize to TOML: {_0}")]
+    #[error("Failed to serialize to TOML: {0}")]
     TomlSerializationError(#[from] toml::ser::Error),
 
     /// Convlint was not able to deserialize to
     /// program structure from TOML.
-    #[error("Failed to deserialize from TOML: {_0}")]
+    #[error("Failed to deserialize from TOML: {0}")]
     TomlDeserializationError(#[from] toml::de::Error),
 
     /// Is thrown if e.g. there is no string before the `:` in
     /// in a commit header.
-    #[error("Expected {_0}, but was not found")]
+    #[error("Expected {0}, but was not found")]
     EmptyContent(String),
 
     /// The parser expected a scope name, but none was found.
@@ -31,7 +31,7 @@ pub enum ModelError {
     MissingScopeNameError,
 
     /// Indicates that the parser expected a character which was not found.
-    #[error("Expected `{_0}`: {_1}")]
+    #[error("Expected `{0}`: {1}")]
     MissingCharacter(char, String),
 
     /// The parser expeceted a description after the conventional
@@ -40,12 +40,12 @@ pub enum ModelError {
     MissingDescription,
 
     /// If the parser finds any part in a string, that was not expected.
-    #[error("Found a string that was not expected: {_0}")]
+    #[error("Found a string that was not expected: {0}")]
     UnexpectedContent(String),
 
     /// Convert an IO Error into a [`ModelError`].
-    #[error("Io Error: {_0}")]
-    IoError(#[from] io::Error),
+    #[error("IO Error: {source} with path `{path}`")]
+    IoError { path: PathBuf, source: io::Error },
 }
 
 impl PartialEq for ModelError {
@@ -60,7 +60,9 @@ impl PartialEq for ModelError {
             (Self::TomlDeserializationError(e1), Self::TomlDeserializationError(e2)) => e1 == e2,
             (Self::TomlSerializationError(e1), Self::TomlSerializationError(e2)) => e1 == e2,
             (Self::UnexpectedContent(c1), Self::UnexpectedContent(c2)) => c1 == c2,
-            (Self::IoError(e1), Self::IoError(e2)) => e1.kind() == e2.kind(),
+            (Self::IoError { source: s1, .. }, Self::IoError { source: s2, .. }) => {
+                s1.kind() == s2.kind()
+            }
             _ => false,
         }
     }

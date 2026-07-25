@@ -7,13 +7,13 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct CommitParser {
     /// The commits as raw strings passed to the parser.
-    pub(crate) raw_commits: Vec<&'static str>,
+    pub(crate) raw_commits: Vec<String>,
 }
 
 impl CommitParser {
     /// Creates a new [`CommitParser`].
     #[must_use]
-    pub const fn new(raw_commits: Vec<&'static str>) -> Self {
+    pub const fn new(raw_commits: Vec<String>) -> Self {
         Self { raw_commits }
     }
 
@@ -40,20 +40,22 @@ impl CommitParser {
     /// This function will return an error if the raw commit is empty, the commit
     /// body, if any, could not be parsed or if any footer can be parsed successfully.
     // TODO: add check if is footer or body, since otherwise errors
-    pub(crate) fn parse_commit(raw_commit: &'static str) -> ModelResult<CommitMessage> {
+    pub(crate) fn parse_commit(raw_commit: &str) -> ModelResult<CommitMessage> {
         if raw_commit.is_empty() {
             return Err(ModelError::EmptyContent(String::from("commit")));
         }
+        // TODO: check if conventional commits defines \n\n between footers
         let mut parts_iter = raw_commit
             .split("\n\n")
             .map(str::trim)
+            .map(ToString::to_string)
             .collect::<Vec<_>>()
             .into_iter();
 
         let Some(raw_header) = parts_iter.next() else {
             return Err(ModelError::EmptyContent(String::from("commit header")));
         };
-        let header = Self::parse_commit_header(raw_header)?;
+        let header = Self::parse_commit_header(&raw_header)?;
 
         let Some(raw_body) = parts_iter.next() else {
             return Ok(CommitMessage {
@@ -62,11 +64,11 @@ impl CommitParser {
                 footers: vec![],
             });
         };
-        let body = Self::parse_commit_body(raw_body)?;
+        let body = Self::parse_commit_body(&raw_body)?;
 
         let mut footers = Vec::new();
         for raw_footer in parts_iter {
-            footers.push(Self::parse_commit_footer(raw_footer)?);
+            footers.push(Self::parse_commit_footer(&raw_footer)?);
         }
 
         Ok(CommitMessage {
@@ -83,7 +85,7 @@ impl CommitParser {
     /// This function will return an error if the raw header is malformed (e.g. does not contain a type,
     /// does not contain a description, is missing the scope if `()` is found or if the `:` is missing).
     // FIXME: refactor
-    pub(crate) fn parse_commit_header(raw_header: &'static str) -> ModelResult<CommitHeader> {
+    pub(crate) fn parse_commit_header(raw_header: &str) -> ModelResult<CommitHeader> {
         if raw_header.is_empty() {
             return Err(ModelError::EmptyContent(String::from("commit header")));
         }
@@ -146,7 +148,7 @@ impl CommitParser {
     ///
     /// This function will return an error if the raw body is empty or the
     /// lines in the body are not consecutive.
-    pub(crate) fn parse_commit_body(raw_body: &'static str) -> ModelResult<CommitBody> {
+    pub(crate) fn parse_commit_body(raw_body: &str) -> ModelResult<CommitBody> {
         let body = raw_body.trim();
         if body.is_empty() {
             return Err(ModelError::EmptyContent(String::from("commit body")));
@@ -169,7 +171,7 @@ impl CommitParser {
     /// # Errors
     ///
     /// This function will return an error if the footer is empty or there is no `:`/`#`.
-    pub(crate) fn parse_commit_footer(raw_footer: &'static str) -> ModelResult<CommitFooter> {
+    pub(crate) fn parse_commit_footer(raw_footer: &str) -> ModelResult<CommitFooter> {
         if raw_footer.is_empty() {
             return Err(ModelError::EmptyContent("commit footer".into()));
         }
@@ -244,7 +246,6 @@ pub mod tests {
         #[case] expected: CommitHeader,
     ) {
         let header_res = CommitParser::parse_commit_header(raw_header);
-        dbg!(&header_res);
         assert!(header_res.is_ok());
         assert_eq!(header_res.unwrap(), expected);
     }

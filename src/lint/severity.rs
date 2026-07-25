@@ -1,4 +1,6 @@
+use owo_colors::OwoColorize;
 use serde::{Deserialize, Serialize};
+use std::fmt::Display;
 
 /// The severity of a rule violation.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -13,4 +15,14 @@ pub enum Severity {
     /// Reject the commit message
     /// if the rule was violated.
     Error,
+}
+
+impl Display for Severity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Ignore => write!(f, "{sev}", sev = "IGNORE".blue()),
+            Self::Warning => write!(f, "{sev}", sev = "WARNING".yellow()),
+            Self::Error => write!(f, "{sev}", sev = "ERROR".red()),
+        }
+    }
 }

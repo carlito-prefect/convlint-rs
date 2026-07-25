@@ -2,7 +2,10 @@ use std::{fs, path::Path};
 
 use serde::{Deserialize, Serialize};
 
-use crate::{error::config_error::ConfigResult, rules::RulesConfig};
+use crate::{
+    error::config_error::{ConfigError, ConfigResult},
+    rules::RulesConfig,
+};
 
 /// The name of the config file.
 pub const CONF_FILE_NAME: &str = "Convlint.toml";
@@ -32,7 +35,10 @@ impl ConvlintTOML {
     /// This function will return an error if the file could not
     /// be read or the read content cannot be deserialized.
     pub(crate) fn from_file(path: &Path) -> ConfigResult<Self> {
-        let file_content = fs::read_to_string(path)?;
+        let file_content = fs::read_to_string(path).map_err(|err| ConfigError::IoError {
+            path: path.to_path_buf(),
+            source: err,
+        })?;
         Ok(toml::from_str(&file_content)?)
     }
 
@@ -49,7 +55,10 @@ impl ConvlintTOML {
     /// to the configuration file.
     pub(crate) fn write_to_file(&self, path: &Path) -> ConfigResult<()> {
         let toml_str = toml::to_string(self)?;
-        fs::write(path, &toml_str)?;
+        fs::write(path, &toml_str).map_err(|err| ConfigError::IoError {
+            path: path.to_path_buf(),
+            source: err,
+        })?;
         Ok(())
     }
 }
@@ -104,7 +113,6 @@ level = "error"
         let valid_conf_toml = toml::from_str(&valid_config_str).unwrap();
 
         let conf_file_path = temp_dir.path().join(CONF_FILE_NAME);
-        let _ = dbg!(fs::write(&conf_file_path, &valid_config_str));
         assert!(fs::write(&conf_file_path, valid_config_str).is_ok());
 
         let conf_res = ConvlintTOML::from_file(&conf_file_path);
@@ -118,7 +126,7 @@ level = "error"
         assert!(conf_res.is_err());
         assert!(matches!(
             conf_res.unwrap_err(),
-            ConfigError::IoError(e) if e.kind() == io::ErrorKind::NotFound
+            ConfigError::IoError { source, .. } if source.kind() == io::ErrorKind::NotFound
         ));
     }
 
