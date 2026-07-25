@@ -4,8 +4,6 @@ use gix::{Id, Repository};
 
 use crate::error::git_error::{GitError, GitResult};
 
-// TODO: add tests for fetching the commit range
-
 /// A wrapper around the [`gix::Repository`] for
 /// a nicer API.
 #[derive(Debug, Clone)]

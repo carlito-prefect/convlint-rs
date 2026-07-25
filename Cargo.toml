@@ -19,5 +19,3 @@ toml = "1.1.3"
 [dev-dependencies]
 rstest = "0.26.1"
 tempfile = "3.27.0"
-
-# TODO: add a rust toolchain

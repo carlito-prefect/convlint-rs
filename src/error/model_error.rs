@@ -2,10 +2,6 @@ use std::{io, path::PathBuf};
 
 use thiserror::Error;
 
-// TODO: add the malicious commit part to the output
-// maybe write a diagnostics struct that is rendered
-// with `owo-colors` or `modern-terminal`
-
 /// All errors that can occur during the execution of Convlint.
 #[derive(Debug, Error)]
 pub enum ModelError {

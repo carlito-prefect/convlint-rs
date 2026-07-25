@@ -26,8 +26,6 @@ impl Linter {
     /// Apply all rules of the linter to the commit message based on the config.
     ///
     /// All errors from all rules are collected into one [`Vec`] and returned.
-    // TODO: add the commit message to the diagnostic to show the user where the error
-    // happened
     #[must_use]
     pub async fn lint(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Vec<Diagnostic> {
         let results = join_all(self.rules.iter().map(|rule| rule.check(commit, config))).await;

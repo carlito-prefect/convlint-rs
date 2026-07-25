@@ -39,12 +39,10 @@ impl CommitParser {
     ///
     /// This function will return an error if the raw commit is empty, the commit
     /// body, if any, could not be parsed or if any footer can be parsed successfully.
-    // TODO: add check if is footer or body, since otherwise errors
     pub fn parse_commit(raw_commit: &str) -> ModelResult<CommitMessage> {
         if raw_commit.is_empty() {
             return Err(ModelError::EmptyContent(String::from("commit")));
         }
-        // TODO: check if conventional commits defines \n\n between footers
         let mut parts_iter = raw_commit
             .split("\n\n")
             .map(str::trim)
@@ -84,7 +82,6 @@ impl CommitParser {
     ///
     /// This function will return an error if the raw header is malformed (e.g. does not contain a type,
     /// does not contain a description, is missing the scope if `()` is found or if the `:` is missing).
-    // FIXME: refactor
     pub fn parse_commit_header(raw_header: &str) -> ModelResult<CommitHeader> {
         if raw_header.is_empty() {
             return Err(ModelError::EmptyContent(String::from("commit header")));
