@@ -90,12 +90,15 @@ impl CommitParser {
     /// This function will return an error if the raw header is malformed (e.g. does not contain a type,
     /// does not contain a description, is missing the scope if `()` is found or if the `:` is missing).
     pub fn parse_commit_header(raw_header: &str) -> ModelResult<CommitHeader> {
-        if raw_header.is_empty() {
+        // check if the entire header is empty
+        if raw_header.trim().is_empty() {
             return Err(ModelError::EmptyContent(String::from("commit header")));
         }
-        let mut header = CommitHeader::default();
-
-        let Some(split_raw_header) = raw_header.split_once(':') else {
+        // split at `:`, if this fails, it is no valid header format
+        let Some((pre_colon, post_colon)) = raw_header
+            .split_once(':')
+            .map(|(l, r)| (l.trim().to_string(), r.trim().to_string()))
+        else {
             return Err(ModelError::MissingCharacter(
                 ':',
                 String::from(
@@ -104,45 +107,76 @@ impl CommitParser {
             ));
         };
 
-        if split_raw_header.0.trim().is_empty() {
-            return Err(ModelError::EmptyContent(String::from("conventional type")));
-        }
-        if split_raw_header.1.trim().is_empty() {
+        // description must not be empty
+        if post_colon.is_empty() {
             return Err(ModelError::MissingDescription);
         }
-        header.description = split_raw_header.1.trim().to_string();
 
-        if let Some(split_type) = split_raw_header.0.split_once('(') {
-            header.commit_type = split_type.0.trim().to_string();
+        // try split at `(`, if successfull, continue parsing a scope name
+        let (conv_type, scope_name, breaking) = if let Some((ty, scope)) = pre_colon
+            .split_once('(')
+            .map(|(l, r)| (l.trim().to_string(), r.trim().to_string()))
+        {
+            // conventional type must not be empty
+            if ty.is_empty() {
+                return Err(ModelError::EmptyContent(String::from("conventional type")));
+            }
 
-            let Some(split_scope) = split_type.1.split_once(')') else {
+            // try split at `)`, if this fails, it is no valid scope format
+            let Some((scope_name, breaking_str)) = scope
+                .split_once(')')
+                .map(|(l, r)| (l.trim().to_string(), r.trim().to_string()))
+            else {
                 return Err(ModelError::MissingCharacter(
                     ')',
                     String::from("a closing parenthesis is expected after the scope name"),
                 ));
             };
 
-            if split_scope.0.is_empty() {
+            // scope name must not be empty
+            if scope_name.is_empty() {
                 return Err(ModelError::MissingScopeNameError);
             }
-            header.scope = Some(CommitScope {
-                scope_name: split_scope.0.trim().to_string(),
-            });
-            if split_scope.1 != "!" && !split_scope.1.is_empty() {
-                return Err(ModelError::UnexpectedContent(split_scope.1.to_string()));
-            } else if split_scope.1 == "!" {
-                header.breaking = true;
+            // there is at most one character allowed after `)`
+            if breaking_str.len() > 1 {
+                return Err(ModelError::UnexpectedContent(breaking_str));
             }
-        } else {
-            if split_raw_header.1.ends_with('!') {
-                header.breaking = true;
-            }
-            header.commit_type = split_raw_header.0[..split_raw_header.0.len()]
-                .trim()
-                .to_string();
-        }
 
-        Ok(header)
+            (ty, Some(scope_name), breaking_str == "!")
+        } else
+        /* header has no scope */
+        {
+            // try splitting at `!`, if this fails, it is a header without scope
+            // and breaking indication
+            let Some((ty, breaking_str)) = pre_colon
+                .split_once('!')
+                .map(|(l, r)| (l.trim().to_string(), r.trim().to_string()))
+            else {
+                // conventional type must not be empty
+                if pre_colon.is_empty() {
+                    return Err(ModelError::EmptyContent(String::from("conventional type")));
+                }
+
+                return Ok(CommitHeader {
+                    commit_type: pre_colon,
+                    scope: None,
+                    description: post_colon,
+                    breaking: false,
+                });
+            };
+            // there is no content allowed after breaking indication
+            if !breaking_str.is_empty() {
+                return Err(ModelError::UnexpectedContent(breaking_str));
+            }
+            (ty, None, pre_colon.ends_with('!'))
+        };
+
+        Ok(CommitHeader {
+            commit_type: conv_type,
+            scope: scope_name.map(CommitScope::new),
+            description: post_colon,
+            breaking,
+        })
     }
 
     /// Parse the commit message's body. The expected form of the body can
@@ -283,6 +317,7 @@ pub mod tests {
     )]
     fn parse_commit_header_fail(#[case] raw_header: &'static str, #[case] expected: ModelError) {
         let header_res = CommitParser::parse_commit_header(raw_header);
+        dbg!(&header_res);
         assert!(header_res.is_err());
         assert_eq!(header_res.unwrap_err(), expected);
     }
@@ -433,6 +468,43 @@ pub mod tests {
             body: Some(CommitBody {
                 content: "here is the body".into()
             }),
+            footers: vec![
+                CommitFooter {
+                    breaking: false,
+                    token: "footer".into(),
+                    value: "number 1".into(),
+                },
+                CommitFooter {
+                    breaking: false,
+                    token: "footer".into(),
+                    value: "number 2".into(),
+                },
+                CommitFooter {
+                    breaking: true,
+                    token: "breaking".into(),
+                    value: "footer".into()
+                }
+            ]
+        }
+    )]
+    #[case(
+        r"feat(parser)!: header and body and footers
+
+        footer: number 1
+
+        footer: number 2
+
+        breaking: footer",
+        CommitMessage {
+            header: CommitHeader {
+                commit_type: "feat".into(),
+                scope: Some(CommitScope {
+                    scope_name: "parser".into()
+                }),
+                description: "header and body and footers".into(),
+                breaking: true
+            },
+            body: None,
             footers: vec![
                 CommitFooter {
                     breaking: false,

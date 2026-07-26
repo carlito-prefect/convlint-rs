@@ -187,6 +187,14 @@ pub struct CommitScope {
     pub scope_name: String,
 }
 
+impl CommitScope {
+    /// Creates a new [`CommitScope`].
+    #[must_use]
+    pub const fn new(scope_name: String) -> Self {
+        Self { scope_name }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use rstest::{fixture, rstest};
