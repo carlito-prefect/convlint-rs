@@ -43,36 +43,43 @@ impl CommitParser {
         if raw_commit.is_empty() {
             return Err(ModelError::EmptyContent(String::from("commit")));
         }
-        let mut parts_iter = raw_commit
-            .split("\n\n")
-            .map(str::trim)
-            .map(ToString::to_string)
-            .collect::<Vec<_>>()
-            .into_iter();
-
-        let Some(raw_header) = parts_iter.next() else {
+        let parts = raw_commit.splitn(2, "\n\n").collect::<Vec<_>>();
+        let Some(raw_header) = parts.first() else {
             return Err(ModelError::EmptyContent(String::from("commit header")));
         };
-        let header = Self::parse_commit_header(&raw_header)?;
-
-        let Some(raw_body) = parts_iter.next() else {
+        let header = Self::parse_commit_header(raw_header)?;
+        if let Some(raw_tail) = parts.get(1) {
+            let mut footers = Vec::new();
+            let lines = raw_tail.lines().rev();
+            let mut remaining = Vec::new();
+            for line in lines {
+                if line.is_empty() {
+                    continue;
+                }
+                if line.trim().split_once(':').is_some() || line.trim().split_once('#').is_some() {
+                    footers.push(Self::parse_commit_footer(line)?);
+                } else {
+                    remaining.push(line);
+                }
+            }
+            footers.reverse();
+            remaining.reverse();
+            let remaining_str = remaining.join("\n");
+            let body = if remaining_str.trim().is_empty() {
+                None
+            } else {
+                Some(Self::parse_commit_body(&remaining_str)?)
+            };
             return Ok(CommitMessage {
                 header,
-                body: None,
-                footers: vec![],
+                body,
+                footers,
             });
-        };
-        let body = Self::parse_commit_body(&raw_body)?;
-
-        let mut footers = Vec::new();
-        for raw_footer in parts_iter {
-            footers.push(Self::parse_commit_footer(&raw_footer)?);
         }
-
         Ok(CommitMessage {
             header,
-            body: Some(body),
-            footers,
+            body: None,
+            footers: vec![],
         })
     }
 
@@ -185,7 +192,6 @@ impl CommitParser {
                 "a footer must contain a `:` or `#` somewhere in it".into(),
             ));
         };
-
         Ok(CommitFooter {
             token: split_hashtag.0.trim().to_string(),
             value: split_hashtag.1.trim().to_string(),
@@ -410,7 +416,6 @@ pub mod tests {
         r"feat(parser)!: header and body and footers
 
         here is the body
-
         footer: number 1
 
         footer: number 2
