@@ -93,8 +93,6 @@ level = "error"
 minimum = 5
 maximum = 10
 
-[rules.body-required]
-level = "error"
             "#;
         String::from(conf)
     }

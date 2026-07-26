@@ -43,14 +43,15 @@ impl Rule for TypeExists {
     }
 
     async fn check(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
-        for allowed_type in &config.rules.type_exists.allowed {
+        let type_exists_config = config.rules.type_exists.clone().unwrap_or_default();
+        for allowed_type in &type_exists_config.allowed {
             if &commit.header.commit_type == allowed_type {
                 return None;
             }
         }
         Some(Diagnostic {
             rule: self.id(),
-            severity: config.rules.type_exists.level,
+            severity: type_exists_config.level,
             message: format!("no valid conventional type: {}", commit.header.commit_type),
             commit: format!("{commit}"),
         })

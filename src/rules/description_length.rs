@@ -45,23 +45,22 @@ impl Rule for DescriptionLength {
     }
 
     async fn check(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
-        if commit.header.description.len() > config.rules.description_length.maximum
-            || commit.header.description.len() < config.rules.description_length.minimum
+        let description_length_config = config.rules.description_length.unwrap_or_default();
+        if commit.header.description.len() > description_length_config.maximum
+            || commit.header.description.len() < description_length_config.minimum
         {
             Some(Diagnostic {
                 rule: self.id(),
-                severity: config.rules.description_length.level,
+                severity: description_length_config.level,
                 message: format!(
                     "description is too {bound}: expected min({min}) and max({max}) characters, found chars({ch})",
-                    bound = if commit.header.description.len()
-                        > config.rules.description_length.maximum
-                    {
+                    bound = if commit.header.description.len() > description_length_config.maximum {
                         "long"
                     } else {
                         "short"
                     },
-                    min = config.rules.description_length.minimum,
-                    max = config.rules.description_length.maximum,
+                    min = description_length_config.minimum,
+                    max = description_length_config.maximum,
                     ch = commit.header.description.len()
                 ),
                 commit: format!("{commit}"),

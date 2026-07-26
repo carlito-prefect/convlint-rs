@@ -43,13 +43,16 @@ pub trait Rule: Send + Sync {
 pub struct RulesConfig {
     /// Defines how to treat existent/non-existent
     /// conventional types.
-    pub type_exists: TypeExistsConfig,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub type_exists: Option<TypeExistsConfig>,
 
     /// Defines how to treat a commit message's header's
     /// description length.
-    pub description_length: DescriptionLengthConfig,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description_length: Option<DescriptionLengthConfig>,
 
     /// Defines how to treat an existent/non-existent commit
     /// message body.
-    pub body_required: BodyRequiredConfig,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub body_required: Option<BodyRequiredConfig>,
 }

@@ -36,10 +36,11 @@ impl Rule for BodyRequired {
     }
 
     async fn check(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
+        let body_required_conf = config.rules.body_required.clone().unwrap_or_default();
         if commit.body.is_none() {
             Some(Diagnostic {
                 rule: self.id(),
-                severity: config.rules.body_required.level,
+                severity: body_required_conf.level,
                 message: String::from("expected the commit message to have a body"),
                 commit: format!("{commit}"),
             })
