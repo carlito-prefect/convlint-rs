@@ -34,7 +34,7 @@ pub trait Rule: Send + Sync {
 
     /// Check if the commit message violates a rule based
     /// on the config.
-    async fn check(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Vec<Diagnostic>;
+    async fn check(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic>;
 }
 
 /// Holds all rule types.

@@ -44,11 +44,11 @@ impl Rule for DescriptionLength {
         "description-length"
     }
 
-    async fn check(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Vec<Diagnostic> {
+    async fn check(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
         if commit.header.description.len() > config.rules.description_length.maximum
             || commit.header.description.len() < config.rules.description_length.minimum
         {
-            vec![Diagnostic {
+            Some(Diagnostic {
                 rule: self.id(),
                 severity: config.rules.description_length.level,
                 message: format!(
@@ -65,9 +65,9 @@ impl Rule for DescriptionLength {
                     ch = commit.header.description.len()
                 ),
                 commit: format!("{commit}"),
-            }]
+            })
         } else {
-            vec![]
+            None
         }
     }
 }
@@ -102,7 +102,7 @@ mod tests {
             body: None,
             footers: vec![]
         },
-        vec![]
+        None
     )]
     #[case(
         CommitMessage {
@@ -115,14 +115,14 @@ mod tests {
             body: None,
             footers: vec![]
         },
-        vec![
+        Some(
             Diagnostic {
                 rule: "description-length",
                 severity: Severity::Warning,
                 message: String::from("description is too short: expected min(20) and max(100) characters, found chars(3)"),
                 commit: "feat: foo".into(),
             }
-        ]
+        )
     )]
     #[case(
         CommitMessage {
@@ -135,14 +135,14 @@ mod tests {
             body: None,
             footers: vec![]
         },
-        vec![
+        Some(
             Diagnostic {
                 rule: "description-length",
                 severity: Severity::Warning,
                 message: String::from("description is too long: expected min(20) and max(100) characters, found chars(120)"),
                 commit: "feat: ".to_string() + &"foo ".repeat(30),
             }
-        ]
+        )
     )]
     #[case(
         CommitMessage {
@@ -156,7 +156,7 @@ mod tests {
             body: None,
             footers: vec![]
         },
-        vec![]
+        None
     )]
     #[case(
         CommitMessage {
@@ -170,12 +170,12 @@ mod tests {
             body: None,
             footers: vec![]
         },
-        vec![]
+        None
     )]
     async fn default_config_check_description_length(
         #[case] commit: CommitMessage,
         default_config: ConvlintTOML,
-        #[case] expected: Vec<Diagnostic>,
+        #[case] expected: Option<Diagnostic>,
     ) {
         let diagnostics = DescriptionLength.check(&commit, &default_config).await;
         assert_eq!(diagnostics, expected);

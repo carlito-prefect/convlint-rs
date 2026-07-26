@@ -35,16 +35,16 @@ impl Rule for BodyRequired {
         "body-required"
     }
 
-    async fn check(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Vec<Diagnostic> {
+    async fn check(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
         if commit.body.is_none() {
-            vec![Diagnostic {
+            Some(Diagnostic {
                 rule: self.id(),
                 severity: config.rules.body_required.level,
                 message: String::from("expected the commit message to have a body"),
                 commit: format!("{commit}"),
-            }]
+            })
         } else {
-            vec![]
+            None
         }
     }
 }
@@ -78,7 +78,7 @@ mod tests {
             body: Some(CommitBody { content: "some body content".into() }),
             footers: vec![]
         },
-        vec![]
+        None
     )]
     #[case(
         CommitMessage {
@@ -91,19 +91,19 @@ mod tests {
             body: None,
             footers: vec![]
         },
-        vec![
+        Some(
             Diagnostic {
                 rule: "body-required",
                 severity: Severity::Warning,
                 message: String::from("expected the commit message to have a body"),
                 commit: "feat: ".to_string() + &"foo ".repeat(25)
             }
-        ]
+        )
     )]
     async fn default_config_check_body_required(
         #[case] commit: CommitMessage,
         default_config: ConvlintTOML,
-        #[case] expected: Vec<Diagnostic>,
+        #[case] expected: Option<Diagnostic>,
     ) {
         let check_res = BodyRequired.check(&commit, &default_config).await;
         assert_eq!(check_res, expected);

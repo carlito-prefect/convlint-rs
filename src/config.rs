@@ -11,10 +11,6 @@ use crate::{
 /// The name of the config file.
 pub const CONF_FILE_NAME: &str = "Convlint.toml";
 
-// TODO: use Option to allow writing to the
-// config file. currently, if convlint would write
-// to a conf file that does not set all fields, the whole config
-// gets written instead of the user given config
 /// The configuration of the convlint execution.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "kebab-case", default)]

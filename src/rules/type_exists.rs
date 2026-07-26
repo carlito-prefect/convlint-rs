@@ -42,18 +42,18 @@ impl Rule for TypeExists {
         "type-exists"
     }
 
-    async fn check(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Vec<Diagnostic> {
+    async fn check(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
         for allowed_type in &config.rules.type_exists.allowed {
             if &commit.header.commit_type == allowed_type {
-                return vec![];
+                return None;
             }
         }
-        vec![Diagnostic {
+        Some(Diagnostic {
             rule: self.id(),
             severity: config.rules.type_exists.level,
             message: format!("no valid conventional type: {}", commit.header.commit_type),
             commit: format!("{commit}"),
-        }]
+        })
     }
 }
 
@@ -86,7 +86,7 @@ mod tests {
             body: None,
             footers: vec![]
         },
-        vec![]
+        None
     )]
     #[case(
         CommitMessage {
@@ -99,7 +99,7 @@ mod tests {
             body: None,
             footers: vec![]
         },
-        vec![]
+        None
     )]
     #[case(
         CommitMessage {
@@ -112,19 +112,19 @@ mod tests {
             body: None,
             footers: vec![]
         },
-        vec![
+        Some(
             Diagnostic {
                 rule: "type-exists",
                 severity: Severity::Error,
                 message: String::from("no valid conventional type: false type"),
                 commit: "false type: added new features".into(),
             }
-        ]
+        )
     )]
     async fn default_config_check_type_exists(
         #[case] commit: CommitMessage,
         default_config: ConvlintTOML,
-        #[case] expected: Vec<Diagnostic>,
+        #[case] expected: Option<Diagnostic>,
     ) {
         let diagnostics = TypeExists.check(&commit, &default_config).await;
         assert_eq!(diagnostics, expected);
