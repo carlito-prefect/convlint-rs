@@ -43,43 +43,49 @@ impl CommitParser {
         if raw_commit.is_empty() {
             return Err(ModelError::EmptyContent(String::from("commit")));
         }
-        let parts = raw_commit.splitn(2, "\n\n").collect::<Vec<_>>();
-        let Some(raw_header) = parts.first() else {
+        let mut parts = raw_commit.splitn(3, "\n\n");
+        let Some(raw_header) = parts.next() else {
             return Err(ModelError::EmptyContent(String::from("commit header")));
         };
         let header = Self::parse_commit_header(raw_header)?;
-        if let Some(raw_tail) = parts.get(1) {
-            let mut footers = Vec::new();
-            let lines = raw_tail.lines().rev();
-            let mut remaining = Vec::new();
-            for line in lines {
-                if line.is_empty() {
-                    continue;
-                }
-                if line.trim().split_once(':').is_some() || line.trim().split_once('#').is_some() {
-                    footers.push(Self::parse_commit_footer(line)?);
-                } else {
-                    remaining.push(line);
-                }
-            }
-            footers.reverse();
-            remaining.reverse();
-            let remaining_str = remaining.join("\n");
-            let body = if remaining_str.trim().is_empty() {
-                None
-            } else {
-                Some(Self::parse_commit_body(&remaining_str)?)
-            };
+        let Some(next_raw) = parts.next() else {
+            return Ok(CommitMessage {
+                header,
+                body: None,
+                footers: vec![],
+            });
+        };
+        let mut footers = Vec::new();
+        let body = if next_raw.split_once(':').is_none() && next_raw.split_once('#').is_none() {
+            Some(Self::parse_commit_body(next_raw)?)
+        } else {
+            footers.push(Self::parse_commit_footer(next_raw)?);
+            None
+        };
+        let Some(raw_footer) = parts.next() else {
             return Ok(CommitMessage {
                 header,
                 body,
-                footers,
+                footers: vec![],
             });
+        };
+        let mut buf = String::new();
+        for line in raw_footer.lines() {
+            if !buf.is_empty() && (line.split_once(':').is_some() || line.split_once('#').is_some())
+            {
+                footers.push(Self::parse_commit_footer(&buf)?);
+                buf.clear();
+            }
+            buf += line;
+        }
+        // parse the last footer stored in buf
+        if !buf.is_empty() {
+            footers.push(Self::parse_commit_footer(&buf)?);
         }
         Ok(CommitMessage {
             header,
-            body: None,
-            footers: vec![],
+            body,
+            footers,
         })
     }
 
@@ -317,7 +323,6 @@ pub mod tests {
     )]
     fn parse_commit_header_fail(#[case] raw_header: &'static str, #[case] expected: ModelError) {
         let header_res = CommitParser::parse_commit_header(raw_header);
-        dbg!(&header_res);
         assert!(header_res.is_err());
         assert_eq!(header_res.unwrap_err(), expected);
     }
@@ -451,6 +456,7 @@ pub mod tests {
         r"feat(parser)!: header and body and footers
 
         here is the body
+
         footer: number 1
 
         footer: number 2
