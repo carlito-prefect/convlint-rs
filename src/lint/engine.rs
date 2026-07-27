@@ -1,5 +1,3 @@
-use futures::future::join_all;
-
 use crate::{
     commit::model::CommitMessage,
     config::ConvlintTOML,
@@ -27,8 +25,8 @@ impl Linter {
     ///
     /// All errors from all rules are collected into one [`Vec`] and returned.
     #[must_use]
-    pub async fn lint(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Vec<Diagnostic> {
-        let results = join_all(self.rules.iter().map(|rule| rule.check(commit, config))).await;
+    pub fn lint(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Vec<Diagnostic> {
+        let results = self.rules.iter().map(|rule| rule.check(commit, config));
 
         results.into_iter().flatten().collect()
     }
@@ -56,7 +54,6 @@ mod tests {
     }
 
     #[rstest]
-    #[tokio::test]
     #[case(
         CommitMessage {
             header: CommitHeader {
@@ -130,13 +127,13 @@ mod tests {
             },
         ]
     )]
-    async fn default_config_lint(
+    fn default_config_lint(
         #[case] commit: CommitMessage,
         default_config: ConvlintTOML,
         #[case] expected: Vec<Diagnostic>,
     ) {
         let linter = Linter::new();
-        let diagnostics = linter.lint(&commit, &default_config).await;
+        let diagnostics = linter.lint(&commit, &default_config);
         assert_eq!(diagnostics, expected);
     }
 }

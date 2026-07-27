@@ -1,10 +1,9 @@
 use clap::Parser;
 use convlint::{cli::ConvlintCli, lint::severity::Severity};
 
-#[tokio::main]
-async fn main() {
+fn main() {
     let cli = ConvlintCli::parse();
-    match cli.run().await {
+    match cli.run() {
         Ok(()) => {}
         Err(e) => println!("[{sev}] {e}.", sev = Severity::Error),
     }

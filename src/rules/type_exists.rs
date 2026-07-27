@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -36,13 +35,12 @@ impl Default for TypeExistsConfig {
 /// A rule that defines if a type must exist.
 pub struct TypeExists;
 
-#[async_trait]
 impl Rule for TypeExists {
     fn id(&self) -> &'static str {
         "type-exists"
     }
 
-    async fn check(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
+    fn check(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
         let type_exists_config = config.rules.type_exists.clone().unwrap_or_default();
         for allowed_type in &type_exists_config.allowed {
             if &commit.header.commit_type == allowed_type {
@@ -53,7 +51,7 @@ impl Rule for TypeExists {
             rule: self.id(),
             severity: type_exists_config.level,
             message: format!("no valid conventional type: {}", commit.header.commit_type),
-            commit: format!("{commit}"),
+            commit: commit.to_string(),
         })
     }
 }
@@ -75,7 +73,6 @@ mod tests {
     }
 
     #[rstest]
-    #[tokio::test]
     #[case(
         CommitMessage {
             header: CommitHeader {
@@ -122,12 +119,12 @@ mod tests {
             }
         )
     )]
-    async fn default_config_check_type_exists(
+    fn default_config_check_type_exists(
         #[case] commit: CommitMessage,
         default_config: ConvlintTOML,
         #[case] expected: Option<Diagnostic>,
     ) {
-        let diagnostics = TypeExists.check(&commit, &default_config).await;
+        let diagnostics = TypeExists.check(&commit, &default_config);
         assert_eq!(diagnostics, expected);
     }
 }

@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -11,6 +10,7 @@ use crate::{
 /// Defines how to treat the length of the commit's
 /// header's description.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case", default)]
 pub struct DescriptionLengthConfig {
     /// Defines how to treat a violation.
     pub level: Severity,
@@ -38,13 +38,12 @@ impl Default for DescriptionLengthConfig {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DescriptionLength;
 
-#[async_trait]
 impl Rule for DescriptionLength {
     fn id(&self) -> &'static str {
         "description-length"
     }
 
-    async fn check(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
+    fn check(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
         let description_length_config = config.rules.description_length.unwrap_or_default();
         if commit.header.description.len() > description_length_config.maximum
             || commit.header.description.len() < description_length_config.minimum
@@ -63,7 +62,7 @@ impl Rule for DescriptionLength {
                     max = description_length_config.maximum,
                     ch = commit.header.description.len()
                 ),
-                commit: format!("{commit}"),
+                commit: commit.to_string(),
             })
         } else {
             None
@@ -89,7 +88,6 @@ mod tests {
     }
 
     #[rstest]
-    #[tokio::test]
     #[case(
         CommitMessage {
             header: CommitHeader {
@@ -171,12 +169,12 @@ mod tests {
         },
         None
     )]
-    async fn default_config_check_description_length(
+    fn default_config_check_description_length(
         #[case] commit: CommitMessage,
         default_config: ConvlintTOML,
         #[case] expected: Option<Diagnostic>,
     ) {
-        let diagnostics = DescriptionLength.check(&commit, &default_config).await;
+        let diagnostics = DescriptionLength.check(&commit, &default_config);
         assert_eq!(diagnostics, expected);
     }
 }

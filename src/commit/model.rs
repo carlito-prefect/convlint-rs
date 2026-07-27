@@ -50,6 +50,7 @@ impl Display for CommitMessage {
             out.push_str(&self.body.clone().map(|b| b.content).unwrap_or_default());
         }
         if self.has_footers() {
+            out.push_str("\n\n");
             out.push_str(
                 &self
                     .footers
@@ -96,11 +97,17 @@ impl CommitMessage {
 /// ```
 #[derive(Debug, Clone, Display, Default, PartialEq, Eq)]
 #[display(
-    "{commit_type}{}: {description}",
+    "{commit_type}{}{}: {description}",
     scope
         .clone()
         .map(|s| format!("({})", s.scope_name))
-        .unwrap_or_default()
+        .unwrap_or_default(),
+    if *breaking {
+        "!"
+    } else {
+        ""
+    }
+
 )]
 pub struct CommitHeader {
     /// The type of the commit.
@@ -216,17 +223,15 @@ mod tests {
     }
 
     #[rstest]
-    #[tokio::test]
     #[case(Some(CommitBody { content: String::new() }))]
     #[case(None)]
-    async fn test_has_body(mut commit_message: CommitMessage, #[case] body: Option<CommitBody>) {
+    fn test_has_body(mut commit_message: CommitMessage, #[case] body: Option<CommitBody>) {
         let has_body_res = body.is_some();
         commit_message.body = body;
         assert_eq!(commit_message.has_body(), has_body_res);
     }
 
     #[rstest]
-    #[tokio::test]
     #[case(vec![])]
     #[case(
         vec![
@@ -243,10 +248,7 @@ mod tests {
             CommitFooter::new("other", "content", false),
         ]
     )]
-    async fn test_has_footers(
-        mut commit_message: CommitMessage,
-        #[case] footers: Vec<CommitFooter>,
-    ) {
+    fn test_has_footers(mut commit_message: CommitMessage, #[case] footers: Vec<CommitFooter>) {
         commit_message.footers = footers;
         assert_eq!(
             commit_message.has_footers(),

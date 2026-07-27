@@ -3,8 +3,6 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use futures::future::join_all;
-
 use clap::{Args, Parser, Subcommand};
 
 use crate::{
@@ -29,15 +27,15 @@ impl ConvlintCli {
     ///
     /// This function will return an error if the init
     /// config could not been written to the current directory.
-    pub async fn run(self) -> Result<(), Box<dyn Error>> {
+    pub fn run(self) -> Result<(), Box<dyn Error>> {
         match self.sub_command {
             ConvlintSubcommand::Init => {
                 let config = ConvlintTOML::default();
-                config.write_to_file(Path::new(CONF_FILE_NAME)).await?;
+                config.write_to_file(Path::new(CONF_FILE_NAME))?;
                 Ok(())
             }
             ConvlintSubcommand::Lint(lint_args) => {
-                let config = ConvlintTOML::from_file(&lint_args.config).await?;
+                let config = ConvlintTOML::from_file(&lint_args.config)?;
                 let source = if lint_args.edit.is_some() {
                     #[allow(clippy::or_fun_call)]
                     CommitSource::File(
@@ -56,13 +54,12 @@ impl ConvlintCli {
                 } else {
                     CommitSource::Stdin
                 };
-                let commits_str = source.fetch_commits(lint_args.directory).await?;
+                let commits_str = source.fetch_commits(lint_args.directory)?;
                 let parser = CommitParser::new(commits_str);
                 let commits = parser.parse_commits()?;
                 let linter = Linter::new();
 
-                let diagnostics =
-                    join_all(commits.iter().map(|commit| linter.lint(commit, &config))).await;
+                let diagnostics = commits.iter().map(|commit| linter.lint(commit, &config));
 
                 let linter_diagnostics = diagnostics.into_iter().flatten().collect::<Vec<_>>();
                 for diagnostic in linter_diagnostics {

@@ -4,16 +4,13 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-async-trait = "0.1.91"
 clap = { version = "4.6.3", features = ["derive"] }
 derive_more = { version = "2.1.1", features = ["display"] }
-futures = "0.3.33"
 gix = "0.86.0"
 gix-object = "0.63.0"
 owo-colors = "4.3.0"
 serde = { version = "1.0.229", features = ["derive"] }
 thiserror = "2.0.19"
-tokio = { version = "1.53.1", features = ["full"] }
 toml = "1.1.3"
 
 [dev-dependencies]

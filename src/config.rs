@@ -1,7 +1,6 @@
-use std::path::Path;
+use std::{fs, path::Path};
 
 use serde::{Deserialize, Serialize};
-use tokio::fs;
 
 use crate::{
     error::config_error::{ConfigError, ConfigResult},
@@ -31,13 +30,11 @@ impl ConvlintTOML {
     ///
     /// This function will return an error if the file could not
     /// be read or the read content cannot be deserialized.
-    pub async fn from_file(path: &Path) -> ConfigResult<Self> {
-        let file_content = fs::read_to_string(path)
-            .await
-            .map_err(|err| ConfigError::IoError {
-                path: path.to_path_buf(),
-                source: err,
-            })?;
+    pub fn from_file(path: &Path) -> ConfigResult<Self> {
+        let file_content = fs::read_to_string(path).map_err(|err| ConfigError::IoError {
+            path: path.to_path_buf(),
+            source: err,
+        })?;
         Ok(toml::from_str(&file_content)?)
     }
 
@@ -52,14 +49,12 @@ impl ConvlintTOML {
     /// This function will return an error if the the configuration
     /// could not be serialized to toml or cannot be written
     /// to the configuration file.
-    pub async fn write_to_file(&self, path: &Path) -> ConfigResult<()> {
+    pub fn write_to_file(&self, path: &Path) -> ConfigResult<()> {
         let toml_str = toml::to_string(self)?;
-        fs::write(path, &toml_str)
-            .await
-            .map_err(|err| ConfigError::IoError {
-                path: path.to_path_buf(),
-                source: err,
-            })?;
+        fs::write(path, &toml_str).map_err(|err| ConfigError::IoError {
+            path: path.to_path_buf(),
+            source: err,
+        })?;
         Ok(())
     }
 }
@@ -108,22 +103,20 @@ maximum = 10
     }
 
     #[rstest]
-    #[tokio::test]
-    async fn parse_config_file_success(temp_dir: TempDir, valid_config_str: String) {
+    fn parse_config_file_success(temp_dir: TempDir, valid_config_str: String) {
         let valid_conf_toml = toml::from_str(&valid_config_str).unwrap();
 
         let conf_file_path = temp_dir.path().join(CONF_FILE_NAME);
         assert!(fs::write(&conf_file_path, valid_config_str).is_ok());
 
-        let conf_res = ConvlintTOML::from_file(&conf_file_path).await;
+        let conf_res = ConvlintTOML::from_file(&conf_file_path);
         assert!(conf_res.is_ok());
         assert_eq!(conf_res.unwrap(), valid_conf_toml);
     }
 
     #[rstest]
-    #[tokio::test]
-    async fn parse_config_file_not_found(temp_dir: TempDir) {
-        let conf_res = ConvlintTOML::from_file(&temp_dir.path().join(CONF_FILE_NAME)).await;
+    fn parse_config_file_not_found(temp_dir: TempDir) {
+        let conf_res = ConvlintTOML::from_file(&temp_dir.path().join(CONF_FILE_NAME));
         assert!(conf_res.is_err());
         assert!(matches!(
             conf_res.unwrap_err(),
@@ -132,12 +125,11 @@ maximum = 10
     }
 
     #[rstest]
-    #[tokio::test]
-    async fn parse_config_file_fail(temp_dir: TempDir, invalid_config_str: String) {
+    fn parse_config_file_fail(temp_dir: TempDir, invalid_config_str: String) {
         let conf_file_path = temp_dir.path().join(CONF_FILE_NAME);
         assert!(fs::write(&conf_file_path, invalid_config_str).is_ok());
 
-        let conf_res = ConvlintTOML::from_file(&conf_file_path).await;
+        let conf_res = ConvlintTOML::from_file(&conf_file_path);
         assert!(conf_res.is_err());
         assert!(matches!(
             conf_res.unwrap_err(),

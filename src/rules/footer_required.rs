@@ -8,15 +8,15 @@ use crate::{
 };
 
 /// Defines how to treat existent/non-existent
-/// commit message body
+/// commit message footers.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default)]
-pub struct BodyRequiredConfig {
+pub struct FooterRequiredConfig {
     /// Defines how to treat violations of this rule.
     level: Severity,
 }
 
-impl Default for BodyRequiredConfig {
+impl Default for FooterRequiredConfig {
     fn default() -> Self {
         Self {
             level: Severity::Warning,
@@ -24,24 +24,22 @@ impl Default for BodyRequiredConfig {
     }
 }
 
-/// A rule that defines if the commit
-/// message requires a body.
-pub struct BodyRequired;
+pub struct FooterRequired;
 
-impl Rule for BodyRequired {
+impl Rule for FooterRequired {
     fn id(&self) -> &'static str {
-        "body-required"
+        "footer-required"
     }
 
     fn check(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
-        let body_required_conf = config.rules.body_required.clone().unwrap_or_default();
-        if commit.has_body() {
+        let footer_required_conf = config.rules.footer_required.clone().unwrap_or_default();
+        if commit.has_footers() {
             None
         } else {
             Some(Diagnostic {
                 rule: self.id(),
-                severity: body_required_conf.level,
-                message: String::from("expected the commit message to have a body"),
+                severity: footer_required_conf.level,
+                message: "expected the commit message to have at least one footer".into(),
                 commit: commit.to_string(),
             })
         }
@@ -53,10 +51,10 @@ mod tests {
     use rstest::{fixture, rstest};
 
     use crate::{
-        commit::model::{CommitBody, CommitHeader, CommitMessage},
+        commit::model::{CommitFooter, CommitHeader, CommitMessage},
         config::ConvlintTOML,
         lint::{diagnostic::Diagnostic, severity::Severity},
-        rules::{Rule, body_required::BodyRequired},
+        rules::{Rule, footer_required::FooterRequired},
     };
 
     #[fixture]
@@ -68,42 +66,47 @@ mod tests {
     #[case(
         CommitMessage {
             header: CommitHeader {
-                commit_type: "feat".into(),
+                commit_type: "fix".into(),
                 scope: None,
-                description: "foo ".repeat(25),
+                description: "some description".into(),
                 breaking: false
             },
-            body: Some(CommitBody { content: "some body content".into() }),
-            footers: vec![]
+            body: None,
+            footers: vec![
+                CommitFooter {
+                    breaking: false,
+                    token: "footer".into(),
+                    value: "some footer content".into()
+                }
+            ]
         },
         None
     )]
     #[case(
         CommitMessage {
             header: CommitHeader {
-                commit_type: "feat".into(),
+                commit_type: "fix".into(),
                 scope: None,
-                description: "foo ".repeat(25),
+                description: "some description".into(),
                 breaking: false
             },
             body: None,
             footers: vec![]
         },
-        Some(
-            Diagnostic {
-                rule: "body-required",
-                severity: Severity::Warning,
-                message: String::from("expected the commit message to have a body"),
-                commit: "feat: ".to_string() + &"foo ".repeat(25)
-            }
-        )
+        Some(Diagnostic {
+            rule: "footer-required",
+            severity: Severity::Warning,
+            message: "expected the commit message to have at least one footer".into(),
+            commit: "fix: some description".into()
+        })
     )]
-    fn default_config_check_body_required(
+
+    fn default_config_check_footer_required(
         #[case] commit: CommitMessage,
         default_config: ConvlintTOML,
         #[case] expected: Option<Diagnostic>,
     ) {
-        let check_res = BodyRequired.check(&commit, &default_config);
-        assert_eq!(check_res, expected);
+        let diagnostics = FooterRequired.check(&commit, &default_config);
+        assert_eq!(diagnostics, expected);
     }
 }

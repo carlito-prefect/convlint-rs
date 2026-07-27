@@ -77,6 +77,7 @@ impl CommitParser {
                 buf.clear();
             }
             buf += line;
+            buf += "\n";
         }
         // parse the last footer stored in buf
         if !buf.is_empty() {
@@ -378,10 +379,10 @@ pub mod tests {
         }
     )]
     #[case(
-        "breaking changes: some info",
+        "breaking changes: some info\nmulti line",
         CommitFooter {
             token: "breaking changes".into(),
-            value: "some info".into(),
+            value: "some info\nmulti line".into(),
             breaking: true
         }
     )]
@@ -453,15 +454,15 @@ pub mod tests {
         }
     )]
     #[case(
-        r"feat(parser)!: header and body and footers
+        "feat(parser)!: header and body and footers
 
         here is the body
 
         footer: number 1
 
-        footer: number 2
+        footer: number 2\nfirst multi line
 
-        breaking: footer",
+        breaking: footer\nsome longer footer",
         CommitMessage {
             header: CommitHeader {
                 commit_type: "feat".into(),
@@ -483,12 +484,12 @@ pub mod tests {
                 CommitFooter {
                     breaking: false,
                     token: "footer".into(),
-                    value: "number 2".into(),
+                    value: "number 2\nfirst multi line".into(),
                 },
                 CommitFooter {
                     breaking: true,
                     token: "breaking".into(),
-                    value: "footer".into()
+                    value: "footer\nsome longer footer".into()
                 }
             ]
         }
