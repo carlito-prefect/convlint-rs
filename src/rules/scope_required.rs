@@ -29,17 +29,17 @@ impl Default for ScopeRequiredConfig {
 pub struct ScopeRequired;
 
 impl Rule for ScopeRequired {
-    fn id(&self) -> &'static str {
+    fn id() -> &'static str {
         "scope-required"
     }
 
-    fn check(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
+    fn check(commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
         let scope_required_config = config.rules.scope_required.clone().unwrap_or_default();
         if commit.header.scope.is_some() {
             None
         } else {
             Some(Diagnostic {
-                rule: "scope-required",
+                rule: Self::id(),
                 severity: scope_required_config.level,
                 message: "a scope is required but was not found".into(),
                 commit: commit.to_string(),
@@ -101,7 +101,7 @@ mod tests {
         default_config: ConvlintTOML,
         #[case] expected: Option<Diagnostic>,
     ) {
-        let diagnostics = ScopeRequired.check(&commit, &default_config);
+        let diagnostics = ScopeRequired::check(&commit, &default_config);
         assert_eq!(diagnostics, expected);
     }
 }

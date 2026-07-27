@@ -37,11 +37,11 @@ impl Default for FooterLineLengthConfig {
 pub struct FooterLineLength;
 
 impl Rule for FooterLineLength {
-    fn id(&self) -> &'static str {
+    fn id() -> &'static str {
         "footer-line-length"
     }
 
-    fn check(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
+    fn check(commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
         let footer_line_length_config = config.rules.footer_line_length.clone().unwrap_or_default();
         let mut too_long_lines = Vec::new();
         for footer in &commit.footers {
@@ -57,7 +57,7 @@ impl Rule for FooterLineLength {
             None
         } else {
             Some(Diagnostic {
-                rule: self.id(),
+                rule: Self::id(),
                 severity: footer_line_length_config.level,
                 message: format!(
                     "footer lines are too long or too short: expected min({min}) and max({max}) characters",
@@ -162,7 +162,7 @@ mod tests {
         default_config: ConvlintTOML,
         #[case] expected: Option<Diagnostic>,
     ) {
-        let diagnostics = FooterLineLength.check(&commit, &default_config);
+        let diagnostics = FooterLineLength::check(&commit, &default_config);
         assert_eq!(diagnostics, expected);
     }
 }

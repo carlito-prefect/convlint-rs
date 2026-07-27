@@ -44,18 +44,18 @@ impl Default for HeaderLengthConfig {
 pub struct HeaderLength;
 
 impl Rule for HeaderLength {
-    fn id(&self) -> &'static str {
+    fn id() -> &'static str {
         "header-length"
     }
 
-    fn check(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
+    fn check(commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
         let header_length_config = config.rules.header_length.clone().unwrap_or_default();
         let header_string = commit.header.to_string();
         if header_string.len() > header_length_config.maximum
             || header_string.len() < header_length_config.minimum
         {
             Some(Diagnostic {
-                rule: self.id(),
+                rule: Self::id(),
                 severity: Severity::Warning,
                 message: format!(
                     "header is too short or too long: expected min({min}) and max({max}) characters",
@@ -138,7 +138,7 @@ mod tests {
         default_config: ConvlintTOML,
         #[case] expected: Option<Diagnostic>,
     ) {
-        let diagnostics = HeaderLength.check(&commit, &default_config);
+        let diagnostics = HeaderLength::check(&commit, &default_config);
         assert_eq!(diagnostics, expected);
     }
 }

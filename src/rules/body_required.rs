@@ -29,17 +29,17 @@ impl Default for BodyRequiredConfig {
 pub struct BodyRequired;
 
 impl Rule for BodyRequired {
-    fn id(&self) -> &'static str {
+    fn id() -> &'static str {
         "body-required"
     }
 
-    fn check(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
+    fn check(commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
         let body_required_conf = config.rules.body_required.clone().unwrap_or_default();
         if commit.has_body() {
             None
         } else {
             Some(Diagnostic {
-                rule: self.id(),
+                rule: Self::id(),
                 severity: body_required_conf.level,
                 message: String::from("expected the commit message to have a body"),
                 commit: commit.to_string(),
@@ -103,7 +103,7 @@ mod tests {
         default_config: ConvlintTOML,
         #[case] expected: Option<Diagnostic>,
     ) {
-        let check_res = BodyRequired.check(&commit, &default_config);
+        let check_res = BodyRequired::check(&commit, &default_config);
         assert_eq!(check_res, expected);
     }
 }

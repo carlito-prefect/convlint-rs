@@ -57,9 +57,8 @@ impl ConvlintCli {
                 let commits_str = source.fetch_commits(lint_args.directory)?;
                 let parser = CommitParser::new(commits_str);
                 let commits = parser.parse_commits()?;
-                let linter = Linter::new();
 
-                let diagnostics = commits.iter().map(|commit| linter.lint(commit, &config));
+                let diagnostics = commits.iter().map(|commit| Linter::lint(commit, &config));
 
                 let linter_diagnostics = diagnostics.into_iter().flatten().collect::<Vec<_>>();
                 for diagnostic in linter_diagnostics {

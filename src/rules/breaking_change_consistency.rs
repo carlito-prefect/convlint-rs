@@ -29,10 +29,10 @@ impl Default for BreakingChangeConsistencyConfig {
 pub struct BreakingChangeConsistency;
 
 impl Rule for BreakingChangeConsistency {
-    fn id(&self) -> &'static str {
+    fn id() -> &'static str {
         "breaking-change-consistency"
     }
-    fn check(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
+    fn check(commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
         let breaking_change_consistency_config = config
             .rules
             .breaking_change_consistency
@@ -44,7 +44,7 @@ impl Rule for BreakingChangeConsistency {
             return None;
         }
         Some(Diagnostic {
-            rule: self.id(),
+            rule: Self::id(),
             severity: breaking_change_consistency_config.level,
             message: "breaking indications in header and footers are not consistent".into(),
             commit: commit.to_string(),
@@ -164,7 +164,7 @@ mod tests {
         default_config: ConvlintTOML,
         #[case] expected: Option<Diagnostic>,
     ) {
-        let diagnostics = BreakingChangeConsistency.check(&commit, &default_config);
+        let diagnostics = BreakingChangeConsistency::check(&commit, &default_config);
         assert_eq!(diagnostics, expected);
     }
 }

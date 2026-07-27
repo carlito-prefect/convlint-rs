@@ -39,11 +39,11 @@ impl Default for BodyLineLengthConfig {
 pub struct BodyLineLength;
 
 impl Rule for BodyLineLength {
-    fn id(&self) -> &'static str {
+    fn id() -> &'static str {
         "body-line-length"
     }
 
-    fn check(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
+    fn check(commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
         let body_line_length_config = config.rules.body_line_length.clone().unwrap_or_default();
         let Some(body) = &commit.body else {
             return None;
@@ -60,7 +60,7 @@ impl Rule for BodyLineLength {
             None
         } else {
             Some(Diagnostic {
-                rule: self.id(),
+                rule: Self::id(),
                 severity: body_line_length_config.level,
                 message: format!(
                     "body lines are too long or too short: expected min({min}) and max({max}) characters",
@@ -133,7 +133,7 @@ mod tests {
         default_config: ConvlintTOML,
         #[case] expected: Option<Diagnostic>,
     ) {
-        let diagnostics = BodyLineLength.check(&commit, &default_config);
+        let diagnostics = BodyLineLength::check(&commit, &default_config);
         assert_eq!(diagnostics, expected);
     }
 }

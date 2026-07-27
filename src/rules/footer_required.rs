@@ -27,17 +27,17 @@ impl Default for FooterRequiredConfig {
 pub struct FooterRequired;
 
 impl Rule for FooterRequired {
-    fn id(&self) -> &'static str {
+    fn id() -> &'static str {
         "footer-required"
     }
 
-    fn check(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
+    fn check(commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
         let footer_required_conf = config.rules.footer_required.clone().unwrap_or_default();
         if commit.has_footers() {
             None
         } else {
             Some(Diagnostic {
-                rule: self.id(),
+                rule: Self::id(),
                 severity: footer_required_conf.level,
                 message: "expected the commit message to have at least one footer".into(),
                 commit: commit.to_string(),
@@ -106,7 +106,7 @@ mod tests {
         default_config: ConvlintTOML,
         #[case] expected: Option<Diagnostic>,
     ) {
-        let diagnostics = FooterRequired.check(&commit, &default_config);
+        let diagnostics = FooterRequired::check(&commit, &default_config);
         assert_eq!(diagnostics, expected);
     }
 }

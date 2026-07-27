@@ -36,11 +36,11 @@ impl Default for TypeExistsConfig {
 pub struct TypeExists;
 
 impl Rule for TypeExists {
-    fn id(&self) -> &'static str {
+    fn id() -> &'static str {
         "type-exists"
     }
 
-    fn check(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
+    fn check(commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
         let type_exists_config = config.rules.type_exists.clone().unwrap_or_default();
         for allowed_type in &type_exists_config.allowed {
             if &commit.header.commit_type == allowed_type {
@@ -48,7 +48,7 @@ impl Rule for TypeExists {
             }
         }
         Some(Diagnostic {
-            rule: self.id(),
+            rule: Self::id(),
             severity: type_exists_config.level,
             message: format!("no valid conventional type: {}", commit.header.commit_type),
             commit: commit.to_string(),
@@ -124,7 +124,7 @@ mod tests {
         default_config: ConvlintTOML,
         #[case] expected: Option<Diagnostic>,
     ) {
-        let diagnostics = TypeExists.check(&commit, &default_config);
+        let diagnostics = TypeExists::check(&commit, &default_config);
         assert_eq!(diagnostics, expected);
     }
 }

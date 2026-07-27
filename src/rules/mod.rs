@@ -5,15 +5,11 @@ use crate::{
     config::ConvlintTOML,
     lint::diagnostic::Diagnostic,
     rules::{
-        body_line_length::BodyLineLengthConfig,
-        body_required::{BodyRequired, BodyRequiredConfig},
+        body_line_length::BodyLineLengthConfig, body_required::BodyRequiredConfig,
         breaking_change_consistency::BreakingChangeConsistencyConfig,
-        description_length::{DescriptionLength, DescriptionLengthConfig},
-        footer_line_length::FooterLineLengthConfig,
-        footer_required::FooterRequiredConfig,
-        header_length::HeaderLengthConfig,
-        scope_required::ScopeRequiredConfig,
-        type_exists::{TypeExists, TypeExistsConfig},
+        description_length::DescriptionLengthConfig, footer_line_length::FooterLineLengthConfig,
+        footer_required::FooterRequiredConfig, header_length::HeaderLengthConfig,
+        scope_required::ScopeRequiredConfig, type_exists::TypeExistsConfig,
     },
 };
 
@@ -28,29 +24,24 @@ pub mod header_length;
 pub mod scope_required;
 pub mod type_exists;
 
-#[must_use]
-pub fn rules() -> Vec<Box<dyn Rule>> {
-    vec![
-        Box::new(BodyRequired),
-        Box::new(DescriptionLength),
-        Box::new(TypeExists),
-    ]
-}
-
 /// Defines functionality all rules must provide
 /// to check for violations.
 pub trait Rule: Send + Sync {
     /// Returns the id/name of the rule.
-    fn id(&self) -> &'static str;
+    fn id() -> &'static str
+    where
+        Self: Sized;
 
     /// Check if the commit message violates a rule based
     /// on the config.
-    fn check(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic>;
+    fn check(commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic>
+    where
+        Self: Sized;
 }
 
 /// Holds all rule types.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
-#[serde(rename_all = "kebab-case", default)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct RulesConfig {
     /// Defines how to treat existent/non-existent
     /// conventional types.

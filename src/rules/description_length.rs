@@ -41,17 +41,17 @@ impl Default for DescriptionLengthConfig {
 pub struct DescriptionLength;
 
 impl Rule for DescriptionLength {
-    fn id(&self) -> &'static str {
+    fn id() -> &'static str {
         "description-length"
     }
 
-    fn check(&self, commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
+    fn check(commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
         let description_length_config = config.rules.description_length.unwrap_or_default();
         if commit.header.description.len() > description_length_config.maximum
             || commit.header.description.len() < description_length_config.minimum
         {
             Some(Diagnostic {
-                rule: self.id(),
+                rule: Self::id(),
                 severity: description_length_config.level,
                 message: format!(
                     "description is too {bound}: expected min({min}) and max({max}) characters, found chars({ch})",
@@ -176,7 +176,7 @@ mod tests {
         default_config: ConvlintTOML,
         #[case] expected: Option<Diagnostic>,
     ) {
-        let diagnostics = DescriptionLength.check(&commit, &default_config);
+        let diagnostics = DescriptionLength::check(&commit, &default_config);
         assert_eq!(diagnostics, expected);
     }
 }
