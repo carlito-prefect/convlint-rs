@@ -10,7 +10,7 @@ use crate::{
 /// Defines if a breaking indication should be in a footer, if any,
 /// if there is `!` in the header.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case", default)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct BreakingChangeConsistencyConfig {
     /// Defines how to treat consitency violations
     level: Severity,

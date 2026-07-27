@@ -10,6 +10,7 @@ use crate::{
 /// Defines if a scope must be
 /// given or not.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct ScopeRequiredConfig {
     /// Defines how to treat violations of this rule.
     level: Severity,

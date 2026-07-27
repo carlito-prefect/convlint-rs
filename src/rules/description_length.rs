@@ -10,16 +10,18 @@ use crate::{
 /// Defines how to treat the length of the commit's
 /// header's description.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "kebab-case", default)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct DescriptionLengthConfig {
     /// Defines how to treat a violation.
     pub level: Severity,
 
     /// The minimum required length of the
     /// description.
+    #[serde(rename = "min")]
     pub minimum: usize,
 
     /// The maximum lenght of the description.
+    #[serde(rename = "max")]
     pub maximum: usize,
 }
 

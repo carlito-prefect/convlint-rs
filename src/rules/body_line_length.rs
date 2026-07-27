@@ -10,14 +10,17 @@ use crate::{
 /// Defines how long or short each line
 /// in the body must be.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct BodyLineLengthConfig {
     /// Defines how to treat violations of this rule.
     level: Severity,
 
     /// The min length of a body line.
+    #[serde(rename = "min")]
     minimum: usize,
 
     /// The max length of a body line.
+    #[serde(rename = "max")]
     maximum: usize,
 }
 

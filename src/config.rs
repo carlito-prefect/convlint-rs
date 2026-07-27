@@ -85,8 +85,8 @@ allowed = ["feat", "fix"]
 
 [rules.description-length]
 level = "error"
-minimum = 5
-maximum = 10
+min = 5
+max = 10
 
             "#;
         String::from(conf)
@@ -100,6 +100,13 @@ maximum = 10
     #[fixture]
     fn valid_config() -> ConvlintTOML {
         ConvlintTOML::default()
+    }
+
+    #[rstest]
+    #[allow(clippy::should_panic_without_expect)]
+    #[should_panic]
+    fn parse_config_file_unknown_field(valid_config_str: String) {
+        toml::from_str::<ConvlintTOML>(&(valid_config_str + "\ninvalid = \"invalid\"")).unwrap();
     }
 
     #[rstest]

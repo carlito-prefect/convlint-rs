@@ -10,7 +10,7 @@ use crate::{
 /// Defines how to treat existent/non-existent
 /// commit message body
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case", default)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct BodyRequiredConfig {
     /// Defines how to treat violations of this rule.
     level: Severity,

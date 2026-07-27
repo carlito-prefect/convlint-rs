@@ -15,14 +15,17 @@ use crate::{
 /// consideration how long scope and the
 /// conventional type are.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct HeaderLengthConfig {
     /// Defines how to treat violations of this rule.
     level: Severity,
 
     /// The min length of the header.
+    #[serde(rename = "min")]
     minimum: usize,
 
     /// The max length of the header.
+    #[serde(rename = "max")]
     maximum: usize,
 }
 

@@ -10,15 +10,17 @@ use crate::{
 /// Defines how short or long a footer line may be
 /// and how to treat violations of this length range.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case", default)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct FooterLineLengthConfig {
     /// Defines how to treat violations of this rule.
     level: Severity,
 
     /// The min length of a footer line.
+    #[serde(rename = "min")]
     minimum: usize,
 
     /// The max length of a footer line.
+    #[serde(rename = "max")]
     maximum: usize,
 }
 

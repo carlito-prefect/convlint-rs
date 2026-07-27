@@ -9,7 +9,7 @@ use crate::{
 
 /// Defines how to treat existent/non-existent conventional types.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "kebab-case", default)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct TypeExistsConfig {
     /// Defines the severity of type existence
     /// violations.
