@@ -35,6 +35,11 @@ pub enum ConfigError {
     /// program structure from TOML.
     #[error("Failed to deserialize from TOML: {0}")]
     TomlDeserializationError(#[from] toml::de::Error),
+
+    /// Convlint was not able to write to the configuration file
+    /// e.g. if the `convlint init` finds an exisiting configuration.
+    #[error("Could not write to configuration file: {0}")]
+    ConfigurationWriteError(String),
 }
 
 impl PartialEq for ConfigError {

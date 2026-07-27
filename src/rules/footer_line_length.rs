@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use tracing::{instrument, trace};
 
 use crate::{
     commit::model::CommitMessage,
@@ -41,7 +42,9 @@ impl Rule for FooterLineLength {
         "footer-line-length"
     }
 
+    #[instrument(skip(commit, config))]
     fn check(commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
+        trace!("Check if all footer line lengths are valid");
         let footer_line_length_config = config.rules.footer_line_length.clone().unwrap_or_default();
         let mut too_long_lines = Vec::new();
         for footer in &commit.footers {
@@ -49,13 +52,21 @@ impl Rule for FooterLineLength {
                 if line.len() > footer_line_length_config.maximum
                     || line.len() < footer_line_length_config.minimum
                 {
+                    trace!(%line, "Footer line length is invalid");
                     too_long_lines.push(line);
                 }
             }
         }
         if too_long_lines.is_empty() {
+            trace!("All footer lines have a valid length");
             None
         } else {
+            trace!(
+                too_long_lines_count = %too_long_lines.len(),
+                min = footer_line_length_config.minimum,
+                max = footer_line_length_config.maximum,
+                "Some footer lines have an invalid length"
+            );
             Some(Diagnostic {
                 rule: Self::id(),
                 severity: footer_line_length_config.level,

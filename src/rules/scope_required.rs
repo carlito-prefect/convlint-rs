@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use tracing::{instrument, trace};
 
 use crate::{
     commit::model::CommitMessage,
@@ -33,11 +34,15 @@ impl Rule for ScopeRequired {
         "scope-required"
     }
 
+    #[instrument(skip(commit, config))]
     fn check(commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
+        trace!("Check if a scope is required and provided");
         let scope_required_config = config.rules.scope_required.clone().unwrap_or_default();
         if commit.header.scope.is_some() {
+            trace!("Commit has a scope, rule generates no diagnostics");
             None
         } else {
+            trace!(header = %commit.header, "Commit does not contain a scope");
             Some(Diagnostic {
                 rule: Self::id(),
                 severity: scope_required_config.level,

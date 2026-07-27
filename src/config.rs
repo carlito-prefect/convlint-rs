@@ -1,6 +1,8 @@
 use std::{fs, path::Path};
 
+use gix::trace::trace;
 use serde::{Deserialize, Serialize};
+use tracing::instrument;
 
 use crate::{
     error::config_error::{ConfigError, ConfigResult},
@@ -30,12 +32,16 @@ impl ConvlintTOML {
     ///
     /// This function will return an error if the file could not
     /// be read or the read content cannot be deserialized.
+    #[instrument(skip(path))]
     pub fn from_file(path: &Path) -> ConfigResult<Self> {
+        trace!(file = %path, "Load configuration from file");
         let file_content = fs::read_to_string(path).map_err(|err| ConfigError::IoError {
             path: path.to_path_buf(),
             source: err,
         })?;
-        Ok(toml::from_str(&file_content)?)
+        let conf = toml::from_str(&file_content)?;
+        trace!("Loaded configuration from file successfully");
+        Ok(conf)
     }
 
     /// Serialize the current config to string and write it
@@ -49,12 +55,15 @@ impl ConvlintTOML {
     /// This function will return an error if the the configuration
     /// could not be serialized to toml or cannot be written
     /// to the configuration file.
+    #[instrument(skip(self, path))]
     pub fn write_to_file(&self, path: &Path) -> ConfigResult<()> {
+        trace!(file = %path, "Write configuration to configuration file");
         let toml_str = toml::to_string(self)?;
         fs::write(path, &toml_str).map_err(|err| ConfigError::IoError {
             path: path.to_path_buf(),
             source: err,
         })?;
+        trace!("Written to configuration file");
         Ok(())
     }
 }

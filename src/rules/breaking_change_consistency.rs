@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use tracing::{instrument, trace};
 
 use crate::{
     commit::model::CommitMessage,
@@ -32,7 +33,10 @@ impl Rule for BreakingChangeConsistency {
     fn id() -> &'static str {
         "breaking-change-consistency"
     }
+
+    #[instrument(skip(commit, config))]
     fn check(commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
+        trace!("Check if a commit's header's and footer's breaking indications are consistent");
         let breaking_change_consistency_config = config
             .rules
             .breaking_change_consistency
@@ -41,8 +45,14 @@ impl Rule for BreakingChangeConsistency {
         if !commit.has_footers()
             || commit.header.breaking == commit.footers.iter().any(|f| f.breaking)
         {
+            trace!(footers_count = %commit.footers.len(), "Header and footers are consistent");
             return None;
         }
+        trace!(
+            header_breaking = %commit.header.breaking,
+            footers_breaking = %!commit.header.breaking,
+            "Header and footers are inconsistent"
+        );
         Some(Diagnostic {
             rule: Self::id(),
             severity: breaking_change_consistency_config.level,

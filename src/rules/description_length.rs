@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use tracing::{instrument, trace};
 
 use crate::{
     commit::model::CommitMessage,
@@ -45,11 +46,19 @@ impl Rule for DescriptionLength {
         "description-length"
     }
 
+    #[instrument(skip(commit, config))]
     fn check(commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
+        trace!("Check if the description has a valid length");
         let description_length_config = config.rules.description_length.unwrap_or_default();
         if commit.header.description.len() > description_length_config.maximum
             || commit.header.description.len() < description_length_config.minimum
         {
+            trace!(
+                length = %commit.header.description.len(),
+                min = description_length_config.minimum,
+                max = description_length_config.maximum,
+                "Commit description length is invalid"
+            );
             Some(Diagnostic {
                 rule: Self::id(),
                 severity: description_length_config.level,
@@ -67,6 +76,7 @@ impl Rule for DescriptionLength {
                 commit: commit.to_string(),
             })
         } else {
+            trace!("Commit description length is valid");
             None
         }
     }

@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use tracing::{instrument, trace};
 
 use crate::{
     commit::model::CommitMessage,
@@ -43,9 +44,12 @@ impl Rule for BodyLineLength {
         "body-line-length"
     }
 
+    #[instrument(skip(commit, config))]
     fn check(commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
+        trace!("Check commit body for lines with invalid length");
         let body_line_length_config = config.rules.body_line_length.clone().unwrap_or_default();
         let Some(body) = &commit.body else {
+            trace!("Commit body is empty, rule generates no diagnostics");
             return None;
         };
         let mut too_long_lines = Vec::new();
@@ -53,12 +57,19 @@ impl Rule for BodyLineLength {
             if line.len() > body_line_length_config.maximum
                 || line.len() < body_line_length_config.minimum
             {
+                trace!(%line, "Found a line with invalid length");
                 too_long_lines.push(line);
             }
         }
         if too_long_lines.is_empty() {
+            trace!("All lines have valid length, rule generates no diagnostics");
             None
         } else {
+            trace!(
+                too_long_lines_count = %too_long_lines.len(),
+                min = %body_line_length_config.minimum,
+                max = %body_line_length_config.maximum,
+                "Some lines have invalid length");
             Some(Diagnostic {
                 rule: Self::id(),
                 severity: body_line_length_config.level,

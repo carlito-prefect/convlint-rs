@@ -1,3 +1,5 @@
+use tracing::{error, instrument, trace};
+
 use crate::{
     commit::model::{CommitBody, CommitFooter, CommitHeader, CommitMessage, CommitScope},
     error::model_error::{ModelError, ModelResult},
@@ -24,9 +26,11 @@ impl CommitParser {
     ///
     /// This function will return an error if any commit could
     /// not be parsed successfully.
+    #[instrument(skip(self))]
     pub fn parse_commits(&self) -> ModelResult<Vec<CommitMessage>> {
         let mut parsed_commits = Vec::new();
         for raw_commit in &self.raw_commits {
+            trace!(commit = %raw_commit, "Parse commit");
             parsed_commits.push(Self::parse_commit(raw_commit)?);
         }
         Ok(parsed_commits)
@@ -39,16 +43,21 @@ impl CommitParser {
     ///
     /// This function will return an error if the raw commit is empty, the commit
     /// body, if any, could not be parsed or if any footer can be parsed successfully.
+    #[instrument(skip(raw_commit))]
     pub fn parse_commit(raw_commit: &str) -> ModelResult<CommitMessage> {
         if raw_commit.is_empty() {
+            error!(commit = %raw_commit, "Commit is empty");
             return Err(ModelError::EmptyContent(String::from("commit")));
         }
         let mut parts = raw_commit.splitn(3, "\n\n");
         let Some(raw_header) = parts.next() else {
+            error!(commit = %raw_commit, "Commit is empty");
             return Err(ModelError::EmptyContent(String::from("commit header")));
         };
+        trace!(header = %raw_header, "Parse commit header");
         let header = Self::parse_commit_header(raw_header)?;
         let Some(next_raw) = parts.next() else {
+            trace!(%header, body = ?None::<CommitBody>, footers = ?Vec::<CommitFooter>::new(), "Finished parsing commit");
             return Ok(CommitMessage {
                 header,
                 body: None,
@@ -56,13 +65,16 @@ impl CommitParser {
             });
         };
         let mut footers = Vec::new();
-        let body = if next_raw.split_once(':').is_none() && next_raw.split_once('#').is_none() {
-            Some(Self::parse_commit_body(next_raw)?)
-        } else {
+        let body = if Self::is_footer_line(next_raw) {
+            trace!(footer = %next_raw, "Parse commit footer");
             footers.push(Self::parse_commit_footer(next_raw)?);
             None
+        } else {
+            trace!(body = %next_raw, "Parse commit body");
+            Some(Self::parse_commit_body(next_raw)?)
         };
         let Some(raw_footer) = parts.next() else {
+            trace!(%header, ?body, footer = ?Vec::<CommitFooter>::new(), "Finished parsing commit");
             return Ok(CommitMessage {
                 header,
                 body,
@@ -73,6 +85,7 @@ impl CommitParser {
         for line in raw_footer.lines() {
             if !buf.is_empty() && (line.split_once(':').is_some() || line.split_once('#').is_some())
             {
+                trace!(footer = %buf, "Parse commit footer");
                 footers.push(Self::parse_commit_footer(&buf)?);
                 buf.clear();
             }
@@ -81,8 +94,10 @@ impl CommitParser {
         }
         // parse the last footer stored in buf
         if !buf.is_empty() {
+            trace!(footer = %buf, "Parse commit footer");
             footers.push(Self::parse_commit_footer(&buf)?);
         }
+        trace!(%header, ?body, ?footers, "Finished parsing commit");
         Ok(CommitMessage {
             header,
             body,
@@ -96,9 +111,11 @@ impl CommitParser {
     ///
     /// This function will return an error if the raw header is malformed (e.g. does not contain a type,
     /// does not contain a description, is missing the scope if `()` is found or if the `:` is missing).
+    #[instrument(skip(raw_header))]
     pub fn parse_commit_header(raw_header: &str) -> ModelResult<CommitHeader> {
         // check if the entire header is empty
         if raw_header.trim().is_empty() {
+            error!(header = %raw_header, "Commit header is empty");
             return Err(ModelError::EmptyContent(String::from("commit header")));
         }
         // split at `:`, if this fails, it is no valid header format
@@ -106,6 +123,7 @@ impl CommitParser {
             .split_once(':')
             .map(|(l, r)| (l.trim().to_string(), r.trim().to_string()))
         else {
+            error!(header = %raw_header, "Header is missing `:`");
             return Err(ModelError::MissingCharacter(
                 ':',
                 String::from(
@@ -116,6 +134,7 @@ impl CommitParser {
 
         // description must not be empty
         if post_colon.is_empty() {
+            error!(header = %raw_header, "Commit header is missing description");
             return Err(ModelError::MissingDescription);
         }
 
@@ -126,6 +145,7 @@ impl CommitParser {
         {
             // conventional type must not be empty
             if ty.is_empty() {
+                error!(header = %raw_header, "Commit header is missing a conventional type");
                 return Err(ModelError::EmptyContent(String::from("conventional type")));
             }
 
@@ -134,6 +154,7 @@ impl CommitParser {
                 .split_once(')')
                 .map(|(l, r)| (l.trim().to_string(), r.trim().to_string()))
             else {
+                error!(header = %raw_header, "Commit is missing a closing parenthesis");
                 return Err(ModelError::MissingCharacter(
                     ')',
                     String::from("a closing parenthesis is expected after the scope name"),
@@ -142,10 +163,12 @@ impl CommitParser {
 
             // scope name must not be empty
             if scope_name.is_empty() {
+                error!(header = %raw_header, "Commit header is missing a scope");
                 return Err(ModelError::MissingScopeNameError);
             }
             // there is at most one character allowed after `)`
             if breaking_str.len() > 1 {
+                error!(header = %raw_header, "Found unexpected content after scope name");
                 return Err(ModelError::UnexpectedContent(breaking_str));
             }
 
@@ -177,6 +200,13 @@ impl CommitParser {
             }
             (ty, None, pre_colon.ends_with('!'))
         };
+        trace!(
+            conventional_type = %conv_type,
+            scope = ?scope_name,
+            is_breaking = %breaking,
+            description = %post_colon,
+            "Finished parsing commit header"
+        );
 
         Ok(CommitHeader {
             commit_type: conv_type,
@@ -193,15 +223,18 @@ impl CommitParser {
     ///
     /// This function will return an error if the raw body is empty or the
     /// lines in the body are not consecutive.
+    #[instrument(skip(raw_body))]
     pub fn parse_commit_body(raw_body: &str) -> ModelResult<CommitBody> {
         let body = raw_body.trim();
         if body.is_empty() {
+            error!(body = %raw_body, "Commit body was found but is empty");
             return Err(ModelError::EmptyContent(String::from("commit body")));
         }
 
         if body.split_once("\n\n").is_some() {
+            error!(body = %raw_body, "Double new line is not allowed in function body");
             return Err(ModelError::UnexpectedContent(String::from(
-                "no newlines allowed in commit bodies",
+                "no double newlines allowed in commit bodies",
             )));
         }
 
@@ -218,9 +251,17 @@ impl CommitParser {
     /// This function will return an error if the footer is empty or there is no `:`/`#`.
     pub fn parse_commit_footer(raw_footer: &str) -> ModelResult<CommitFooter> {
         if raw_footer.is_empty() {
+            error!(footer = %raw_footer, "Footer is empty");
             return Err(ModelError::EmptyContent("commit footer".into()));
         }
         if let Some(split_colon) = raw_footer.split_once(':') {
+            trace!(
+                token = %split_colon.0.trim(),
+                value = %split_colon.1.trim(),
+                is_breaking = %split_colon.0.to_lowercase().contains("breaking"),
+                found_seperator = ":",
+                "Finished parsing footer"
+            );
             return Ok(CommitFooter {
                 token: split_colon.0.trim().to_string(),
                 value: split_colon.1.trim().to_string(),
@@ -228,16 +269,36 @@ impl CommitParser {
             });
         }
         let Some(split_hashtag) = raw_footer.split_once('#') else {
+            error!(footer = %raw_footer, "Footer is missing `:` or `#`");
             return Err(ModelError::MissingCharacter(
                 ':',
                 "a footer must contain a `:` or `#` somewhere in it".into(),
             ));
         };
+        trace!(
+            token = %split_hashtag.0.trim(),
+            value = %split_hashtag.1.trim(),
+            is_breaking = %split_hashtag.0.to_lowercase().contains("breaking"),
+            found_seperator = "#",
+            "Finished parsing footer"
+        );
         Ok(CommitFooter {
             token: split_hashtag.0.trim().to_string(),
             value: split_hashtag.1.trim().to_string(),
             breaking: split_hashtag.0.to_lowercase().contains("breaking"),
         })
+    }
+
+    /// Helper to check if a single line formatted as a footer token
+    fn is_footer_line(line: &str) -> bool {
+        let line = line.trim_start();
+        if let Some((token, _)) = line.split_once(':').or_else(|| line.split_once('#')) {
+            // Footer tokens use hyphenated words or "BREAKING CHANGE"
+            let token = token.trim();
+            !token.contains(' ') || token.eq_ignore_ascii_case("BREAKING CHANGE")
+        } else {
+            false
+        }
     }
 }
 
@@ -353,7 +414,9 @@ pub mod tests {
         r"some start
 
         after newline",
-        ModelError::UnexpectedContent(String::from("no newlines allowed in commit bodies"))
+        ModelError::UnexpectedContent(String::from(
+            "no double newlines allowed in commit bodies"
+        ))
     )]
     fn parse_commit_body_fail(#[case] raw_body: &'static str, #[case] expected: ModelError) {
         let body_res = CommitParser::parse_commit_body(raw_body);

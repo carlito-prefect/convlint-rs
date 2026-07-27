@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use tracing::{instrument, trace};
 
 use crate::{
     commit::model::CommitMessage,
@@ -48,12 +49,20 @@ impl Rule for HeaderLength {
         "header-length"
     }
 
+    #[instrument(skip(commit, config))]
     fn check(commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
+        trace!("Check if the length of the whole header is valid");
         let header_length_config = config.rules.header_length.clone().unwrap_or_default();
         let header_string = commit.header.to_string();
         if header_string.len() > header_length_config.maximum
             || header_string.len() < header_length_config.minimum
         {
+            trace!(
+                length = header_string.len(),
+                min = header_length_config.minimum,
+                max = header_length_config.maximum,
+                "The header has an invalid length"
+            );
             Some(Diagnostic {
                 rule: Self::id(),
                 severity: Severity::Warning,
@@ -65,6 +74,7 @@ impl Rule for HeaderLength {
                 commit: commit.to_string(),
             })
         } else {
+            trace!(header = %commit.header, "The header has a valid length");
             None
         }
     }

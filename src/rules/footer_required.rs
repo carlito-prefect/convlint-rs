@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use tracing::{instrument, trace};
 
 use crate::{
     commit::model::CommitMessage,
@@ -31,11 +32,15 @@ impl Rule for FooterRequired {
         "footer-required"
     }
 
+    #[instrument(skip(commit, config))]
     fn check(commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
+        trace!("Check if a footer is required and at least one is provided");
         let footer_required_conf = config.rules.footer_required.clone().unwrap_or_default();
         if commit.has_footers() {
+            trace!("At least one footer exists, rule generates no diagnostics");
             None
         } else {
+            trace!("Commit does not have any headers");
             Some(Diagnostic {
                 rule: Self::id(),
                 severity: footer_required_conf.level,

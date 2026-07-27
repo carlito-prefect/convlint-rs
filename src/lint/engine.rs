@@ -1,3 +1,5 @@
+use tracing::{instrument, trace};
+
 use crate::{
     commit::model::CommitMessage,
     config::ConvlintTOML,
@@ -21,8 +23,10 @@ impl Linter {
     ///
     /// All errors from all rules are collected into one [`Vec`] and returned.
     #[must_use]
+    #[instrument(skip(commit, config))]
     pub fn lint(commit: &CommitMessage, config: &ConvlintTOML) -> Vec<Diagnostic> {
-        vec![
+        trace!("Apply all rules to commit");
+        let diagnostics: Vec<Diagnostic> = vec![
             BodyLineLength::check(commit, config),
             BodyRequired::check(commit, config),
             BreakingChangeConsistency::check(commit, config),
@@ -35,6 +39,11 @@ impl Linter {
         ]
         .into_iter()
         .flatten()
-        .collect()
+        .collect();
+        trace!(
+            diagnostics_count = diagnostics.len(),
+            "Successfully applied all rules and collected diagnostics"
+        );
+        diagnostics
     }
 }

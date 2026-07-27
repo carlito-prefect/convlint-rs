@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use tracing::{instrument, trace};
 
 use crate::{
     commit::model::CommitMessage,
@@ -40,13 +41,24 @@ impl Rule for TypeExists {
         "type-exists"
     }
 
+    #[instrument(skip(commit, config))]
     fn check(commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
+        trace!("Check if the given conventional type is a valid one");
         let type_exists_config = config.rules.type_exists.clone().unwrap_or_default();
         for allowed_type in &type_exists_config.allowed {
             if &commit.header.commit_type == allowed_type {
+                trace!(
+                    conventional_type = allowed_type,
+                    "Commit has a valid conventional type"
+                );
                 return None;
             }
         }
+        trace!(
+            commit_conventional_type = commit.header.commit_type,
+            allowed_types = ?type_exists_config.allowed,
+            "The commit's type is no valid conventional type"
+        );
         Some(Diagnostic {
             rule: Self::id(),
             severity: type_exists_config.level,

@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use tracing::{instrument, trace};
 
 use crate::{
     commit::model::CommitMessage,
@@ -33,11 +34,15 @@ impl Rule for BodyRequired {
         "body-required"
     }
 
+    #[instrument(skip(commit, config))]
     fn check(commit: &CommitMessage, config: &ConvlintTOML) -> Option<Diagnostic> {
+        trace!("Check if a body is required and exists");
         let body_required_conf = config.rules.body_required.clone().unwrap_or_default();
         if commit.has_body() {
+            trace!("Commit has a body, rule generates no diagnostics");
             None
         } else {
+            trace!("Commit has no body");
             Some(Diagnostic {
                 rule: Self::id(),
                 severity: body_required_conf.level,

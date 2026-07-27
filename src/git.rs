@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
-use gix::{Id, Repository};
+use gix::{Id, Repository, trace::trace};
+use tracing::{error, instrument};
 
 use crate::error::git_error::{GitError, GitResult};
 
@@ -20,10 +21,12 @@ impl GitRepository {
     /// This function will return an error if there is no
     /// git repository found at the specified path.
     #[allow(clippy::result_large_err)]
+    #[instrument]
     pub fn new(root: PathBuf) -> GitResult<Self> {
-        Ok(Self {
-            gix_repo: gix::discover(root)?,
-        })
+        trace!(repo_root = %root, "Try discovering a git repository");
+        let gix_repo = gix::discover(root)?;
+        trace!("Found git repo");
+        Ok(Self { gix_repo })
     }
 
     /// Fetches all commits in a given range and returns their messages.
@@ -36,9 +39,14 @@ impl GitRepository {
     /// This function will return an error if convlint could not iterate
     /// over the range, an object is not a commit or the commit is invalid.
     #[allow(clippy::result_large_err)]
+    #[instrument(skip(self))]
     pub fn fetch_git_range_commits(&self, from: &str, to: &str) -> GitResult<Vec<String>> {
+        trace!("Fetch all commits in git range");
+
         let head = self.gix_repo.rev_parse_single(to)?;
+        trace!(%head, "Resolved `to` commit");
         let base = self.gix_repo.rev_parse_single(from)?;
+        trace!(%base, "Resolved `from` commit");
 
         self.base_before_head(base, head)?;
 
@@ -47,6 +55,7 @@ impl GitRepository {
 
         for info in walk {
             let info = info?;
+            trace!(commit_id = %commit.id, "Fetch commit");
             let commit = self.gix_repo.find_commit(info.id)?;
             let header = commit.message()?.title;
             let body = commit
@@ -60,13 +69,15 @@ impl GitRepository {
                 commits.push(header.to_string() + "\n\n" + &body);
             }
         }
-
+        trace!(commit_count = %commits.len(), "Fetched all commits in commit range");
         Ok(commits)
     }
 
     /// Checks if the commit reference passed to `from` is before `to`.
     #[allow(clippy::result_large_err)]
+    #[instrument(skip(self, base, head))]
     fn base_before_head<'a>(&self, base: Id<'a>, head: Id<'a>) -> GitResult<bool> {
+        trace!("Walk the commits to verify that base is before head");
         let walk = self.gix_repo.rev_walk([head]).all()?;
 
         let mut found = false;
@@ -76,11 +87,13 @@ impl GitRepository {
 
             if info.id == base {
                 found = true;
+                trace!("Base commit is before head commit");
                 break;
             }
         }
 
         if !found {
+            error!("Base commit is after head commit");
             return Err(GitError::HeadBaseCommitError(
                 base.to_string(),
                 head.to_string(),

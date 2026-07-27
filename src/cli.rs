@@ -1,20 +1,28 @@
 use std::{
     error::Error,
+    fs,
     path::{Path, PathBuf},
 };
 
 use clap::{Args, Parser, Subcommand};
+use clap_verbosity_flag::{Verbosity, WarnLevel};
+use tracing::{debug, error, instrument, trace, warn};
 
 use crate::{
     commit::{parser::CommitParser, source::CommitSource},
     config::{CONF_FILE_NAME, ConvlintTOML},
-    lint::engine::Linter,
+    error::config_error::ConfigError,
+    lint::{engine::Linter, severity::Severity},
 };
 
 /// Yet another conventional commit linter.
 #[derive(Debug, Clone, Parser)]
 #[command(version, about, long_about = None, author, )]
 pub struct ConvlintCli {
+    /// Verbosity level (-v, -vv, -vvv, -q)
+    #[command(flatten)]
+    pub verbose: Verbosity<WarnLevel>,
+
     /// The convlint command to execute
     #[clap(subcommand)]
     sub_command: ConvlintSubcommand,
@@ -27,16 +35,30 @@ impl ConvlintCli {
     ///
     /// This function will return an error if the init
     /// config could not been written to the current directory.
+    #[instrument(skip(self), fields(cmd = ?self.sub_command))]
     pub fn run(self) -> Result<(), Box<dyn Error>> {
         match self.sub_command {
             ConvlintSubcommand::Init => {
+                debug!(config_file = %CONF_FILE_NAME, "Write the default config to the config file");
                 let config = ConvlintTOML::default();
+                if fs::exists(Path::new(CONF_FILE_NAME))? {
+                    error!(
+                        "Configuration file already exists. Aborted writing default configuration to file"
+                    );
+                    return Err(Box::new(ConfigError::ConfigurationWriteError(
+                        String::from("the `convlint init` expects no existing configuraton file"),
+                    )));
+                }
                 config.write_to_file(Path::new(CONF_FILE_NAME))?;
+                debug!("Finished writing to configuration file");
                 Ok(())
             }
             ConvlintSubcommand::Lint(lint_args) => {
+                debug!("Parse commit(s) and apply rules");
+                trace!("Read config from file");
                 let config = ConvlintTOML::from_file(&lint_args.config)?;
                 let source = if lint_args.edit.is_some() {
+                    trace!(file = ?lint_args.edit, "Select a file as commit source");
                     #[allow(clippy::or_fun_call)]
                     CommitSource::File(
                         lint_args
@@ -44,26 +66,40 @@ impl ConvlintCli {
                             .unwrap_or(PathBuf::from("./.git/COMMIT_EDITMSG")),
                     )
                 } else if lint_args.from.is_some() {
+                    trace!(from = ?lint_args.from, to = ?lint_args.to, "Select a git range as commit source");
                     #[allow(clippy::or_fun_call)]
                     CommitSource::GitRange {
                         from: lint_args.from.unwrap_or("HEAD~".into()),
                         to: lint_args.to.unwrap_or("HEAD".into()),
                     }
                 } else if lint_args.msg.is_some() {
+                    trace!(
+                        msg = &lint_args.msg,
+                        "Select a command line string as commit source"
+                    );
                     CommitSource::Message(lint_args.msg.unwrap_or_default())
                 } else {
+                    trace!("Select stdin as commit source");
                     CommitSource::Stdin
                 };
+                trace!("Fetch all commits");
                 let commits_str = source.fetch_commits(lint_args.directory)?;
                 let parser = CommitParser::new(commits_str);
+                trace!("Parse all commits into a `CommitMessage`");
                 let commits = parser.parse_commits()?;
 
+                trace!(commit_count = %commits.len(), "Lint all commits");
                 let diagnostics = commits.iter().map(|commit| Linter::lint(commit, &config));
 
+                trace!(diagnostics_count = %diagnostics.len(), "Output all diagnostics");
                 let linter_diagnostics = diagnostics.into_iter().flatten().collect::<Vec<_>>();
                 for diagnostic in linter_diagnostics {
+                    if diagnostic.severity == Severity::Ignore {
+                        continue;
+                    }
                     println!("{diagnostic}");
                 }
+                debug!("Finished linting commits");
                 Ok(())
             }
         }
