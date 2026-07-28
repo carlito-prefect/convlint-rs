@@ -36,7 +36,8 @@ impl ConvlintCli {
     /// This function will return an error if the init
     /// config could not been written to the current directory.
     #[instrument(skip(self), fields(cmd = ?self.sub_command))]
-    pub fn run(self) -> Result<(), Box<dyn Error>> {
+    pub fn run(self) -> Result<i32, Box<dyn Error>> {
+        let mut exit_code = 0;
         match self.sub_command {
             ConvlintSubcommand::Init => {
                 debug!(config_file = %CONF_FILE_NAME, "Write the default config to the config file");
@@ -51,7 +52,7 @@ impl ConvlintCli {
                 }
                 config.write_to_file(Path::new(CONF_FILE_NAME))?;
                 debug!("Finished writing to configuration file");
-                Ok(())
+                Ok(exit_code)
             }
             ConvlintSubcommand::Lint(lint_args) => {
                 debug!("Parse commit(s) and apply rules");
@@ -94,13 +95,15 @@ impl ConvlintCli {
                 trace!(diagnostics_count = %diagnostics.len(), "Output all diagnostics");
                 let linter_diagnostics = diagnostics.into_iter().flatten().collect::<Vec<_>>();
                 for diagnostic in linter_diagnostics {
-                    if diagnostic.severity == Severity::Ignore {
-                        continue;
+                    match diagnostic.severity {
+                        Severity::Ignore => continue,
+                        Severity::Warning => {}
+                        Severity::Error => exit_code = 1,
                     }
                     println!("{diagnostic}");
                 }
                 debug!("Finished linting commits");
-                Ok(())
+                Ok(exit_code)
             }
         }
     }

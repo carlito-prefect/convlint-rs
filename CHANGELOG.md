@@ -7,7 +7,6 @@
 - *(config)* Added basic configuration struct (currently without fields)
 - *(rules/lint)* Added rules and a linter to apply them
 - *(git)* Added collectiong commits from various sources; added a git module to interact with a repo; added workflow
-- *(async)* Marked all functions, that can be async as async
 - *(rules)* Added more rules
 - *(tracing)* Added tracing
 

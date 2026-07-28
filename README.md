@@ -30,10 +30,8 @@ This method requires Rust and Cargo to be installed.
 git clone git clone [https://github.com/carlito-prefect/convlint-rs.git](https://github.com/carlito-prefect/convlint-rs.git)
 
 # Build and install it from the repo
-cargo install --path . # use `--locked` to not resolve the latest package versions but rather use the lock file
+cargo install --path . --target [your wanted target (e.g. x86_64-unknown-linux-musl)] # use `--locked` to not resolve the latest package versions but rather use the lock file
 ```
-
-> Installation from  crates.io is planned but not yet supported.
 
 #### Pre-compiled binary
 
