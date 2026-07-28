@@ -1,0 +1,14 @@
+repos:
+  - repo: https://github.com/doublify/pre-commit-rust
+    rev: master
+    hooks:
+      - id: fmt
+      - id: cargo-check
+
+  - repo: local
+    hooks:
+      - id: convlint
+        name: convlint (local)
+        entry: convlint -q lint --edit
+        language: system
+        stages: [commit-msg]
