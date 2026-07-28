@@ -2,6 +2,14 @@
 name = "convlint"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.95.0"
+authors = ["carlito-prefect <social.crl@benedix.org>"]
+description = "A fast Conventional Commits linter written in Rust"
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/carlito-prefect/convlint-rs"
+keywords = ["conventional-commits", "lint", "git", "cli", "rust"]
+categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 clap = { version = "4.6.3", features = ["derive"] }

@@ -119,7 +119,12 @@ pub enum ConvlintSubcommand {
 pub struct LintArgs {
     /// Edit the last commit message from the
     /// specified file or fallback to `./.git/COMMIT_EDITMSG`
-    #[arg(short = 'e', long)]
+    #[arg(
+        short = 'e',
+        long,
+        num_args = 0..=1,
+        default_missing_value = "./.git/COMMIT_EDITMSG"
+    )]
     pub edit: Option<PathBuf>,
 
     /// Lower end of the commit range to lint

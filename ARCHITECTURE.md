@@ -15,10 +15,9 @@ used in:
 
 - validate conventional commit messages
 - provide clear diagnostics
-- support custom rules
-- provide a Rust-native implementation
 - automatic configuration discovery
-- optional serialized output
+- optional serialized diagnostics output
+- auto-format commits if possible
 
 ---
 
@@ -33,18 +32,56 @@ used in:
 ## Source Code Model
 
 ```txt
-src/
-├── cli.rs
-├── error.rs
-├── config.rs
-├── commit/
-│ └── mod.rs
-├── git/
-│ └── mod.rs
-├── lint/
-│ └── mod.rs
-└── rules/
-  └── mod.rs
+convlint/
+├── ARCHITECTURE.md
+├── Cargo.lock
+├── Cargo.toml
+├── CHANGELOG.md
+├── cliff.toml
+├── README.md
+├── rust-toolchain.toml
+└── src
+    // the command line interface
+    ├── cli.rs
+    // all structures to represent
+    // commits and parse them
+    ├── commit
+    │   ├── model.rs
+    │   ├── mod.rs
+    │   ├── parser.rs
+    │   └── source.rs
+    ├── config.rs
+    // all errors
+    ├── error
+    │   ├── config_error.rs
+    │   ├── git_error.rs
+    │   ├── model_error.rs
+    │   ├── mod.rs
+    │   └── source_error.rs
+    // all git functionality
+    ├── git.rs
+    ├── lib.rs
+    // the linter which applies
+    // rules to commits
+    ├── lint
+    │   ├── diagnostic.rs
+    │   ├── engine.rs
+    │   ├── mod.rs
+    │   └── severity.rs
+    ├── main.rs
+    // all rules available in convlint
+    └── rules
+        ├── body_line_length.rs
+        ├── body_required.rs
+        ├── breaking_change_consistency.rs
+        ├── description_length.rs
+        ├── description_required.rs
+        ├── footer_line_length.rs
+        ├── footer_required.rs
+        ├── header_length.rs
+        ├── mod.rs
+        ├── scope_required.rs
+        └── type_exists.r
 ```
 
 ---
@@ -54,8 +91,20 @@ src/
 General workflow:
 
 ```txt
-Commit source -> Commit message text -> Parser -> Commit message AST -> Rule engine -> Diagnostics -> Output formatter
+File/Stdin/String/Git-Range
+        ↓
+Fetch commit from source
+        ↓
+Parse commits to `CommitMessage`s
+        ↓
+Apply each rule to each commit message
+        ↓
+Collect all diagnostics
+        ↓
+Output diagnostics to stdout/file
 ```
+
+> outputting diagnostics to file is not yet supported
 
 ---
 
@@ -87,7 +136,8 @@ CommitMessage {
     footers: [
         CommitFooter {
             token: "BREAKING CHANGE",
-            value: "Parser API changed."
+            value: "Parser API changed.",
+            breaking: true,
         }
     ],
 }
@@ -101,8 +151,8 @@ Commit messages can come from various sources.
 
 - file: `.git/COMMIT_EDITMSG`
 - git history: `HEAD~10..HEAD`
-- stdin
-- direct string
+- stdin (must be passed via pipe, because the otherwise the stdin will wait forever)
+- direct string (as command line argument)
 
 This allows the linter to be used in different contexts: hooks, CI, manual checks, integrations.
 
@@ -114,12 +164,14 @@ The parser converts raw text into internal commit model.
 
 Responsibilities:
 
-- parse header
-- extract type
-- extract scope
-- detect breaking changes
+- parse header:
+  - extract type
+  - extract scope
+  - detect breaking changes
 - parse body
-- parse footers
+- parse footers:
+  - extract token:value
+  - detect breaking changes
 
 The parser does not validate the commit message.
 
@@ -131,22 +183,25 @@ Rules validate the parsed commit.
 
 Example rules:
 
-- type-empty
-- type-enum
-- scope-empty
-- subject-empty
-- header-max-length
+- type-exists (checks if the given type is allowed)
+- scope-required (checks if a scope is required and exists)
+- description-length (checks if the length of the description is valid)
+- body-required (checks if a body is required and exists)
 
 Interface:
 
 ```rust
-trait Rule {
-    fn name(&self) -> &'static str;
+trait Rule: Send + Sync {
+    fn id() -> &'static str
+    where
+        Self: Sized;
 
     fn check(
-        &self,
-        commit: &CommitMessage
-    ) -> Vec<Diagnostic>;
+        commit: &CommitMessage,
+        config: &ConvlintTOML
+    ) -> Option<Diagnostic>
+    where
+        Self: Sized;
 }
 ```
 
@@ -161,19 +216,16 @@ Diagnostic {
     rule: "header-max-length",
     severity: Severity::Error,
     message: "Header exceeds 72 characters",
-    suggestion: None,
+    commit: CommitMessage { .. },
 }
 ```
 
 Diagnostics can be rendered as:
 
 - terminal output
-- JSON
-- CI annotations
+- JSON (not yet supported)
 
 ---
-
-## Configuration
 
 ## Configuration
 
@@ -198,7 +250,7 @@ Behavior:
 
 - Search for existing config
 - Never overwrite automatically
-- Create `Convlint.toml` if missing
+- Create `Convlint.toml`
 
 ---
 
@@ -211,10 +263,12 @@ Sources:
 - file (`--edit`)
 - git range (`--from`, `--to`)
 - stdin
+- message (a pure string)
 
 Restrictions:
 
 - `--edit` cannot be combined with `--from`/`--to`
+- `--from` can be used without `--to`, but not vice versa, since this could result in a lot of commits checked accidentally in large repos
 
 ---
 
@@ -257,6 +311,7 @@ Examples:
 
 Error types:
 
-- `UserError`: invalid configuration or arguments
-- `ParseError`: Malformed commit
-- `ValidationError`: Commit does not match the rules
+- `ConfigError`: errors loading, storing and processing the configuration
+- `SourceError`: errors when determining the commit source
+- `ModelError`: errors that happen during transformation from source to commit model
+- `GitError`: errors when processing a git repo

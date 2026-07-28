@@ -1,49 +1,178 @@
-# convlint
+# Convlint
 
-A fast, flexible, and developer-friendly Conventional Commits linter written in Rust.
+Convlint is yet another conventional commit linter that validates commit(s) and is applicable locally, in CI and pre-commit.
 
 This project is inspired by KeisukeYamashita's [commitlint-rs](https://github.com/KeisukeYamashita/commitlint-rs) and conventional-changelog's [commitlint](https://github.com/conventional-changelog/commitlint).
 
+---
+
 ## Features
 
-- Conventional Commits validation
-- Configurable lint rules
-- Clear diagnostics
-- Git history validation
-- Machine-readable output formats
-- Rust-native implementation
+- **Commit Validation** - validate commits based on configured rules
+- **Rule Configuration** - configure how to treat violations of specific rules
+- **CI Integration** - validate all commits of a PR
+- **Pre-Commit Integration** - add hook into the pre-commit configuration and run it before each commit
+- **Clear Error Handling** - don't panic on unexpected events
+- **Clear Diagnostic Message** - output all violations to stdout
 
-## Installation
+---
 
-> Not available yet
+## Quick Start
 
-## Usage
+### Installation
 
-Create the default configuration file:
+#### Cargo
+
+This method requires Rust and Cargo to be installed.
+
+```bash
+# Clone the repository
+git clone git clone [https://github.com/carlito-prefect/convlint-rs.git](https://github.com/carlito-prefect/convlint-rs.git)
+
+# Build and install it from the repo
+cargo install --path . # use `--locked` to not resolve the latest package versions but rather use the lock file
+```
+
+> Installation from  crates.io is planned but not yet supported.
+
+#### Pre-compiled binary
+
+Download a release binary from the [release section](https://github.com/carlito-prefect/convlint-rs/releases) of the repository.
+
+```bash
+# Move to a directory included in the $PATH
+cp convlint ~/.local/bin/
+```
+
+**Trouble Shooting**: check if the directory is in your `$PATH` using `echo $PATH`
+
+### Verify installation
+
+```bash
+convlint -V
+```
+
+This should output the version of the installed `convlint` binary (e.g. `convlint 0.1.0`).
+
+### Initialize Convlint
+
+Convlint needs the `Convlint.toml` configuration file. If you don't want to write it yourself, you can generate the default configuration.
+
+> The default configuration currently holds no rules. This is changed in the future. To apply rules at the moment, rules have to be written by hand, the `init` command currently only creates the config file.
 
 ```bash
 convlint init
 ```
 
-Lint a commit message:
+### Configuration Examples
 
-```bash
-convlint lint --edit .git/COMMIT_EDITMSG
+```toml
+[rule.type-exists]
+level = "error"
+allowed = [
+    "feat",
+    "fix",
+    "chore",
+    "doc"
+]
 ```
 
-Lint a commit range:
+### Examples
+
+**Lint a simple commit**:
 
 ```bash
-# this lints all commits between HEAD~10 and HEAD (inclusive)
-convlint lint --from HEAD~10 --to HEAD
+convlint lint "feat(parser): implemented some new parser features"
 ```
+
+This could output something like:
+
+```txt
+[WARNING] expected the commit message to have a body from rule `body-required`
+
+   feat(parser): implemented some new parser feature
+```
+
+**Lint a commit from a file**:
 
 ```bash
-# this lints all commits between the initial commit and HEAD (inclusive)
-convlint lint --to HEAD~10
+convlint lint --edit [file] # falls back to `./.git/COMMIT_EDITMSG`
 ```
-## Configuration
 
-Configuration is stored in `Convlint.toml`.
+The fallback is the latest commit message. If used in pre-commit it 
+holds the commit message of the commit that is about to be created
 
-> Example not yet final
+**Lint from a commit range**:
+
+```bash
+convlint lint --from HEAD~3 --to HEAD
+```
+
+---
+
+## Repository structure
+
+```txt
+convlint/
+├── ARCHITECTURE.md
+├── Cargo.lock
+├── Cargo.toml
+├── CHANGELOG.md
+├── cliff.toml
+├── README.md
+├── rust-toolchain.toml
+└── src
+    // the command line interface
+    ├── cli.rs
+    // all structures to represent
+    // commits and parse them
+    ├── commit
+    │   ├── model.rs
+    │   ├── mod.rs
+    │   ├── parser.rs
+    │   └── source.rs
+    ├── config.rs
+    // all errors
+    ├── error
+    │   ├── config_error.rs
+    │   ├── git_error.rs
+    │   ├── model_error.rs
+    │   ├── mod.rs
+    │   └── source_error.rs
+    // all git functionality
+    ├── git.rs
+    ├── lib.rs
+    // the linter which applies
+    // rules to commits
+    ├── lint
+    │   ├── diagnostic.rs
+    │   ├── engine.rs
+    │   ├── mod.rs
+    │   └── severity.rs
+    ├── main.rs
+    // all rules available in convlint
+    └── rules
+        ├── body_line_length.rs
+        ├── body_required.rs
+        ├── breaking_change_consistency.rs
+        ├── description_length.rs
+        ├── description_required.rs
+        ├── footer_line_length.rs
+        ├── footer_required.rs
+        ├── header_length.rs
+        ├── mod.rs
+        ├── scope_required.rs
+        └── type_exists.r
+```
+
+---
+
+## Testing
+
+To test the project, clone the repository and execute
+
+```bash
+cargo nextest run
+```
+
+> Currently only unit tests are implemented; integration tests will be added in future releases
