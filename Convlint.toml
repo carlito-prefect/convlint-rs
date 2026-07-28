@@ -1,0 +1,11 @@
+[rules.type-exists]
+level = "error"
+allowed = ["feat", "fix", "doc", "chore", "test"]
+
+[rules.description-length]
+level = "warning"
+min = 20
+max = 100
+
+[rules.body-required]
+level = "warning"

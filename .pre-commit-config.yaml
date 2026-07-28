@@ -9,6 +9,6 @@ repos:
     hooks:
       - id: convlint
         name: convlint (local)
-        entry: convlint -q lint --edit
+        entry: convlint -qq lint --edit
         language: system
         stages: [commit-msg]
