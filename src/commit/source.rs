@@ -77,3 +77,19 @@ impl CommitSource {
             .join("\n")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use rstest::rstest;
+
+    use crate::commit::source::CommitSource;
+
+    #[rstest]
+    #[case("# only comment", "")]
+    #[case("#comment first\ncontent second", "content second")]
+    #[case("more than\n#one\nline", "more than\nline")]
+    #[case("no\ncomments\nin this string", "no\ncomments\nin this string")]
+    fn test_remove_comments(#[case] commit: &str, #[case] expected: String) {
+        assert_eq!(CommitSource::remove_comments(commit), expected);
+    }
+}
