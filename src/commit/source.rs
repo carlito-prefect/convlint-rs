@@ -46,9 +46,9 @@ impl CommitSource {
                         source: err,
                     })?;
                 trace!("Read from file successfully");
-                Ok(vec![file_content])
+                Ok(vec![Self::remove_comments(&file_content)])
             }
-            Self::Message(msg) => Ok(vec![msg.to_owned()]),
+            Self::Message(msg) => Ok(vec![Self::remove_comments(msg)]),
             Self::Stdin => {
                 trace!("Start reading from stdin");
                 let mut buffer = String::new();
@@ -56,12 +56,24 @@ impl CommitSource {
                     .read_to_string(&mut buffer)
                     .map_err(SourceError::StdinError)?;
                 trace!("Read from stdin successfully");
-                Ok(vec![buffer])
+                Ok(vec![Self::remove_comments(&buffer)])
             }
             Self::GitRange { from, to } => {
                 let repo = GitRepository::new(git_root)?;
-                Ok(repo.fetch_git_range_commits(from, to)?)
+                Ok(repo
+                    .fetch_git_range_commits(from, to)?
+                    .iter()
+                    .map(|commit| Self::remove_comments(commit))
+                    .collect())
             }
         }
+    }
+
+    fn remove_comments(commit_str: &str) -> String {
+        commit_str
+            .lines()
+            .filter(|line| !line.starts_with('#'))
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 }
