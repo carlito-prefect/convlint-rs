@@ -40,7 +40,7 @@ pub trait Rule: Send + Sync {
 }
 
 /// Holds all rule types.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct RulesConfig {
     /// Defines how to treat existent/non-existent
@@ -84,4 +84,20 @@ pub struct RulesConfig {
     /// Defines how to treat existent/non-existent scope.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub scope_required: Option<ScopeRequiredConfig>,
+}
+
+impl Default for RulesConfig {
+    fn default() -> Self {
+        Self {
+            type_exists: Some(TypeExistsConfig::default()),
+            description_length: Some(DescriptionLengthConfig::default()),
+            body_required: Some(BodyRequiredConfig::default()),
+            body_line_length: None,
+            breaking_change_consistency: None,
+            footer_line_length: None,
+            footer_required: None,
+            header_length: None,
+            scope_required: None,
+        }
+    }
 }

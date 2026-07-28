@@ -58,8 +58,6 @@ This should output the version of the installed `convlint` binary (e.g. `convlin
 
 Convlint needs the `Convlint.toml` configuration file. If you don't want to write it yourself, you can generate the default configuration.
 
-> The default configuration currently holds no rules. This is changed in the future. To apply rules at the moment, rules have to be written by hand, the `init` command currently only creates the config file.
-
 ```bash
 convlint init
 ```
